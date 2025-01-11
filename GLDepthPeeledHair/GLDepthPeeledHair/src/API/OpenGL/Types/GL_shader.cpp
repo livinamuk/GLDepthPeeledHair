@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include "../Util.hpp"
 
 std::string readTextFromFile(std::string path) {
     std::ifstream file(path);
@@ -168,12 +169,12 @@ void Shader::SetVec2(const std::string& name, const glm::vec2& value) {
 /////////////
 // COMPUTE //
 
-void ComputeShader::Load(std::string computePath) {
+void ComputeShader::Load(std::string path) {
     std::string computeCode;
     std::ifstream cShaderFile;
     cShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     try {
-        cShaderFile.open(computePath);
+        cShaderFile.open(path);
         std::stringstream cShaderStream;
         cShaderStream << cShaderFile.rdbuf();
         cShaderFile.close();
@@ -186,22 +187,23 @@ void ComputeShader::Load(std::string computePath) {
     unsigned int compute = glCreateShader(GL_COMPUTE_SHADER);
     glShaderSource(compute, 1, &cShaderCode, NULL);
     glCompileShader(compute);
-    checkCompileErrors(compute, "COMPUTE");
+    CheckCompileErrors(compute, path, "COMPUTE");
     m_ID = glCreateProgram();
     glAttachShader(m_ID, compute);
     glLinkProgram(m_ID);
-    checkCompileErrors(m_ID, "PROGRAM");
+    CheckCompileErrors(m_ID, path, "PROGRAM");
     glDeleteShader(compute);
     m_uniformsLocations.clear();
 }
 
-void ComputeShader::CheckCompileErrors(int shader, std::string type) {
+void ComputeShader::CheckCompileErrors(int shader, const std::string& path, const std::string& type) {
     GLint success;
     GLchar infoLog[1024];
     if (type != "PROGRAM") {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+            std::cout << path << "\n";
             std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- \n";
         }
     }
@@ -209,6 +211,7 @@ void ComputeShader::CheckCompileErrors(int shader, std::string type) {
         glGetProgramiv(shader, GL_LINK_STATUS, &success);
         if (!success) {
             glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+            std::cout << path << "\n";
             std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- \n";
         }
     }

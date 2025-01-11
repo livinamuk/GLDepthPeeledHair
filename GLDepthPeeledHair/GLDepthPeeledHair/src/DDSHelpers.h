@@ -22,7 +22,7 @@
 // AMD_Compress_Test_Helpers.h : Defines the entry point for the console application.
 //
 
-#include "Compressonator.h"
+#include "cmp_compressonatorlib/Compressonator.h"
 
 
 CMP_FORMAT GetFormat(CMP_DWORD dwFourCC);

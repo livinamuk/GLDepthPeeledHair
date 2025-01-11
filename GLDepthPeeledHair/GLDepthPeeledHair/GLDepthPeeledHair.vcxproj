@@ -21,7 +21,6 @@
     <ClCompile Include="src\File\AssimpImporter.cpp" />
     <ClCompile Include="src\File\File.cpp" />
     <ClCompile Include="src\GameObject.cpp" />
-    <ClCompile Include="src\ImageTools.cpp" />
     <ClCompile Include="src\DDSHelpers.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Main.cpp" />
@@ -34,8 +33,6 @@
     <ClCompile Include="vendor\tinyexr\tinyexr.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\GLWater\OpenGLWater\OpenGLWater\res\shaders\hair_depth_only.frag" />
-    <None Include="..\..\..\GLWater\OpenGLWater\OpenGLWater\res\shaders\hair_depth_only.vert" />
     <None Include="res\shaders\gl_hair_final_composite.comp" />
     <None Include="res\shaders\gl_hair_depth_peel.frag" />
     <None Include="res\shaders\gl_hair_depth_peel.vert" />
@@ -69,7 +66,6 @@
     <ClInclude Include="src\Common\Common.h" />
     <ClInclude Include="src\Common\Enums.h" />
     <ClInclude Include="src\Common\Primtives.hpp" />
-    <ClInclude Include="src\ImageTools.h" />
     <ClInclude Include="src\DDSHelpers.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\keycodes.h" />
@@ -142,14 +138,17 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>vendor\glad\include;vendor\GLFW\include;vendor\glm;vendor\stb_image;vendor\fmod\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\glad\include;vendor\GLFW\include;vendor\glm;vendor\stb_image;vendor\fmod\include;vendor\compressonator\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>vendor\GLFW\lib\Release;vendor\fmod\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;fmod_vc.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(ProjectDir)vendor\DLLs\fmod.dll" "$(TargetDir)fmod.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -159,7 +158,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>vendor\compressonator\include;vendor\gli\include;src\Common;vendor\glad\include;vendor\GLFW\include;vendor\glm;vendor\stb_image;vendor\assimp\include;vendor;vendor\fmod\include;vendor\tinyexr;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>vendor\compressonator\include\;vendor\gli\include;src\Common;vendor\glad\include;vendor\GLFW\include;vendor\glm;vendor\stb_image;vendor\assimp\include;vendor;vendor\fmod\include;vendor\tinyexr;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -168,8 +167,13 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>vendor\assimp\lib;vendor\GLFW\lib\Release;vendor\compressonator\lib;vendor\fmod\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;Compressonator_MD_DLL.lib;assimp.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;Compressonator_MD.lib;assimp-vc143-mt.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(ProjectDir)vendor\DLLs\fmod.dll" "$(TargetDir)fmod.dll"
+copy /Y "$(ProjectDir)vendor\DLLs\assimp-vc143-mt.dll" "$(TargetDir)assimp-vc143-mt.dll"copy /Y "$(ProjectDir)vendor\DLLs\assimp-vc143-mt.dll" "$(TargetDir)assimp-vc143-mt.dll"
+xcopy "$(ProjectDir)res\shaders" "$(TargetDir)res\shaders" /e /y /i /r</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

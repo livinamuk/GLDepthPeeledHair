@@ -37,7 +37,7 @@ struct ComputeShader {
         void SetMat3(const std::string& name, const glm::mat3& mat);
         void SetMat4(const std::string& name, const glm::mat4& mat);
     private:
-        void CheckCompileErrors(int shader, std::string type);
+        void CheckCompileErrors(int shader, const std::string& path, const std::string& type);
         int m_ID = -1;
         std::unordered_map<std::string, int> m_uniformsLocations;
 };

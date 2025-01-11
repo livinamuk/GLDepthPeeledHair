@@ -64,7 +64,7 @@ namespace OpenGLBackend {
         glClear(GL_COLOR_BUFFER_BIT);
         SwapBuffersPollEvents();
 
-        for (int i = 0; i < 2; ++i) {
+        for (int i = 0; i < 4; ++i) {
             PBO& pbo = g_textureUploadPBOs.emplace_back();
             pbo.Init(MAX_DATA_SIZE);
         }

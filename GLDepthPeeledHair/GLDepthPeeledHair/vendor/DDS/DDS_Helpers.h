@@ -23,7 +23,7 @@
 //
 
 #pragma once
-#include "Compressonator.h"
+#include "cmp_compressonatorlib/Compressonator.h"
 
 CMP_FORMAT GetFormat(CMP_DWORD dwFourCC);
 CMP_DWORD GetFourCC(CMP_FORMAT nFormat);

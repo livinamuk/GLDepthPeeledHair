@@ -1,5 +1,4 @@
 #pragma once
-#include <Compressonator.h>
 #include <string>
 #include <memory>
 #include "../API/OpenGL/Types/GL_texture.h"
@@ -10,8 +9,6 @@ struct Texture {
 public:
     Texture() = default;
     void Load();
-    //void Bake();
-    //void BakeCMPData(CMP_Texture* cmpTexture);
     void SetLoadingState(LoadingState loadingState);
     void SetBakingState(BakingState state);
     void SetMipmapState(MipmapState state);

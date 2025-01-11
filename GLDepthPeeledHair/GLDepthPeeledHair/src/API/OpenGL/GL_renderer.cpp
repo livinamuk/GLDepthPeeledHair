@@ -25,7 +25,6 @@ namespace OpenGLRenderer {
         ComputeShader computeTest;
         ComputeShader hairfinalComposite;
         ComputeShader hairLayerComposite;
-        ComputeShader generateMipmap;
     } g_shaders;
 
     struct FrameBuffers {
@@ -381,14 +380,12 @@ namespace OpenGLRenderer {
     }
 
     void GenerateMipmaps(OpenGLTexture& glTexture) {
-        g_shaders.generateMipmap.Use();
         glBindTexture(GL_TEXTURE_2D, glTexture.GetHandle());
         glGenerateMipmap(GL_TEXTURE_2D);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     void LoadShaders() {
-        g_shaders.generateMipmap.Load("res/shaders/gl_generate_mipmap.comp");
         g_shaders.hairfinalComposite.Load("res/shaders/gl_hair_final_composite.comp");
         g_shaders.hairLayerComposite.Load("res/shaders/gl_hair_layer_composite.comp");
         g_shaders.solidColor.Load("gl_solid_color.vert", "gl_solid_color.frag");

@@ -12,6 +12,7 @@
 #include "tinyexr.h"
 #include "../API/OpenGL/GL_util.hpp" // Remove me when you can
 #include "DDS/DDS_Helpers.h"
+#include "cmp_compressonatorlib/compressonator.h"
 
 namespace ImageTools {
     std::mutex g_consoleMutex;
@@ -246,71 +247,71 @@ void CleanupMipSet(CMP_MipSet& mipSet) {
 
 
 void ImageTools::CompresssDXT3WithMipmaps(const char* filename, unsigned char* data, int width, int height, int numChannels) {  
-    // Swizzle RGB to BGR for compatibility with compression tools 
-    if (numChannels == 3) {
-        SwizzleRGBtoBGR(data, width, height);
-    }
-    // Generate mipmaps
-    std::vector<unsigned char*> mipmaps = GenerateMipmaps(data, width, height, numChannels);
-
-    CMP_MipSet compressedMipSet;
-    memset(&compressedMipSet, 0, sizeof(CMP_MipSet));
-    compressedMipSet.m_nWidth = width;
-    compressedMipSet.m_nHeight = height;
-    compressedMipSet.m_nMipLevels = mipmaps.size();
-    compressedMipSet.m_nDepth = 1; // Single 2D texture
-    compressedMipSet.m_pMipLevelTable = new CMP_MipLevel * [compressedMipSet.m_nDepth];
-    compressedMipSet.m_pMipLevelTable[0] = new CMP_MipLevel[compressedMipSet.m_nMipLevels];
-
-    for (int i = 0; i < compressedMipSet.m_nMipLevels; ++i) {
-        memset(&compressedMipSet.m_pMipLevelTable[0][i], 0, sizeof(CMP_MipLevel));
-    }
-
-    for (size_t i = 0; i < mipmaps.size(); ++i) {
-        CMP_Texture srcTexture = {};
-        srcTexture.dwSize = sizeof(CMP_Texture);
-        srcTexture.dwWidth = std::max(1, width >> i);
-        srcTexture.dwHeight = std::max(1, height >> i);
-        srcTexture.dwPitch = srcTexture.dwWidth * numChannels;
-        srcTexture.format = numChannels == 4 ? CMP_FORMAT_RGBA_8888 : CMP_FORMAT_RGB_888;
-        srcTexture.dwDataSize = srcTexture.dwHeight * srcTexture.dwPitch;
-        srcTexture.pData = mipmaps[i];
-
-        CMP_Texture destTexture = {};
-        destTexture.dwSize = sizeof(CMP_Texture);
-        destTexture.dwWidth = srcTexture.dwWidth;
-        destTexture.dwHeight = srcTexture.dwHeight;
-        destTexture.format = CMP_FORMAT_DXT3;
-        destTexture.dwDataSize = CMP_CalculateBufferSize(&destTexture);
-        destTexture.pData = (CMP_BYTE*)malloc(destTexture.dwDataSize);
-
-        CMP_CompressOptions options = {};
-        options.dwSize = sizeof(options);
-        options.fquality = 0.88f;
-
-        CMP_ERROR cmp_status = CMP_ConvertTexture(&srcTexture, &destTexture, &options, nullptr);
-        if (cmp_status != CMP_OK) {
-            std::cerr << "Compression failed for mip level " << i << " with error code: " << cmp_status << "\n";
-            free(destTexture.pData);
-            continue;
-        }
-
-        CMP_MipLevel* mipLevel = GetMipLevel(&compressedMipSet, 0, i);
-        mipLevel->m_pbData = destTexture.pData;
-        mipLevel->m_nWidth = destTexture.dwWidth;
-        mipLevel->m_nHeight = destTexture.dwHeight;
-        mipLevel->m_dwLinearSize = destTexture.dwDataSize;
-    }
-
-    // SaveDDSFileWithMipmaps(filename, compressedMipSet);
-
-    for (size_t i = 1; i < mipmaps.size(); ++i) {
-        free(mipmaps[i]);
-    }
-
-    std::cout << "Compression completed successfully for " << filename << "\n";
-
-
+    //// Swizzle RGB to BGR for compatibility with compression tools 
+    //if (numChannels == 3) {
+    //    SwizzleRGBtoBGR(data, width, height);
+    //}
+    //// Generate mipmaps
+    //std::vector<unsigned char*> mipmaps = GenerateMipmaps(data, width, height, numChannels);
+    //
+    //CMP_MipSet compressedMipSet;
+    //memset(&compressedMipSet, 0, sizeof(CMP_MipSet));
+    //compressedMipSet.m_nWidth = width;
+    //compressedMipSet.m_nHeight = height;
+    //compressedMipSet.m_nMipLevels = mipmaps.size();
+    //compressedMipSet.m_nDepth = 1; // Single 2D texture
+    //compressedMipSet.m_pMipLevelTable = new CMP_MipLevel * [compressedMipSet.m_nDepth];
+    //compressedMipSet.m_pMipLevelTable[0] = new CMP_MipLevel[compressedMipSet.m_nMipLevels];
+    //
+    //for (int i = 0; i < compressedMipSet.m_nMipLevels; ++i) {
+    //    memset(&compressedMipSet.m_pMipLevelTable[0][i], 0, sizeof(CMP_MipLevel));
+    //}
+    //
+    //for (size_t i = 0; i < mipmaps.size(); ++i) {
+    //    CMP_Texture srcTexture = {};
+    //    srcTexture.dwSize = sizeof(CMP_Texture);
+    //    srcTexture.dwWidth = std::max(1, width >> i);
+    //    srcTexture.dwHeight = std::max(1, height >> i);
+    //    srcTexture.dwPitch = srcTexture.dwWidth * numChannels;
+    //    srcTexture.format = numChannels == 4 ? CMP_FORMAT_RGBA_8888 : CMP_FORMAT_RGB_888;
+    //    srcTexture.dwDataSize = srcTexture.dwHeight * srcTexture.dwPitch;
+    //    srcTexture.pData = mipmaps[i];
+    //
+    //    CMP_Texture destTexture = {};
+    //    destTexture.dwSize = sizeof(CMP_Texture);
+    //    destTexture.dwWidth = srcTexture.dwWidth;
+    //    destTexture.dwHeight = srcTexture.dwHeight;
+    //    destTexture.format = CMP_FORMAT_DXT3;
+    //    destTexture.dwDataSize = CMP_CalculateBufferSize(&destTexture);
+    //    destTexture.pData = (CMP_BYTE*)malloc(destTexture.dwDataSize);
+    //
+    //    CMP_CompressOptions options = {};
+    //    options.dwSize = sizeof(options);
+    //    options.fquality = 0.88f;
+    //
+    //    CMP_ERROR cmp_status = CMP_ConvertTexture(&srcTexture, &destTexture, &options, nullptr);
+    //    if (cmp_status != CMP_OK) {
+    //        std::cerr << "Compression failed for mip level " << i << " with error code: " << cmp_status << "\n";
+    //        free(destTexture.pData);
+    //        continue;
+    //    }
+    //
+    //    CMP_MipLevel* mipLevel = GetMipLevel(&compressedMipSet, 0, i);
+    //    mipLevel->m_pbData = destTexture.pData;
+    //    mipLevel->m_nWidth = destTexture.dwWidth;
+    //    mipLevel->m_nHeight = destTexture.dwHeight;
+    //    mipLevel->m_dwLinearSize = destTexture.dwDataSize;
+    //}
+    //
+    //// SaveDDSFileWithMipmaps(filename, compressedMipSet);
+    //
+    //for (size_t i = 1; i < mipmaps.size(); ++i) {
+    //    free(mipmaps[i]);
+    //}
+    //
+    //std::cout << "Compression completed successfully for " << filename << "\n";
+    //
+    //
 }
 
 void ImageTools::CompresssBC5(const char* filename, unsigned char* data, int width, int height, int numChannels) {

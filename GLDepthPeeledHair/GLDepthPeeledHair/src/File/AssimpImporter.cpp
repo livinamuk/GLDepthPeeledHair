@@ -1,9 +1,11 @@
 #include "AssimpImporter.h"
 #include "File.h"
 #include "Common.h"
-#include "Importer.hpp"
-#include "scene.h"
-#include "postprocess.h"
+#include <assimp/matrix3x3.h>
+#include <assimp/matrix4x4.h>
+#include <assimp/Importer.hpp>
+#include <assimp/Scene.h>
+#include <assimp/PostProcess.h>
 #include "../Util.hpp"
 
 ModelData AssimpImporter::ImportFbx(const std::string filepath) {

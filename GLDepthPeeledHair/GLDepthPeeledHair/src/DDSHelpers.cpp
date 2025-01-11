@@ -24,7 +24,7 @@
 #pragma warning(disable:4996)   // Ignoring 'fopen': This function or variable may be unsafe
 
 
-#include "Compressonator.h"
+#include "cmp_compressonatorlib/Compressonator.h"
 #include "DDSHelpers.h"
 #include <assert.h>
 #include <stdio.h>

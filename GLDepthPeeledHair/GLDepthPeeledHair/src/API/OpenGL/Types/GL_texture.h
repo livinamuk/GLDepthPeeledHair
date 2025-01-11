@@ -2,7 +2,6 @@
 #include "../Common/Types.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <Compressonator.h>
 #include <string>
 #include <memory>
 
