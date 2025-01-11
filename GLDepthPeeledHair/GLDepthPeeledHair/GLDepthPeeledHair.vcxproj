@@ -20,8 +20,6 @@
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\File\AssimpImporter.cpp" />
     <ClCompile Include="src\File\File.cpp" />
-    <ClCompile Include="src\FlipbookObject.cpp" />
-    <ClCompile Include="src\FlipbookTexture.cpp" />
     <ClCompile Include="src\GameObject.cpp" />
     <ClCompile Include="src\ImageTools.cpp" />
     <ClCompile Include="src\DDSHelpers.cpp" />
@@ -36,22 +34,20 @@
     <ClCompile Include="vendor\tinyexr\tinyexr.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\shaders\compute_test.comp" />
-    <None Include="res\shaders\debug_output.comp" />
-    <None Include="res\shaders\gl_flipbook.frag" />
-    <None Include="res\shaders\gl_flipbook.vert" />
-    <None Include="res\shaders\gl_generate_mipmap.comp" />
-    <None Include="res\shaders\hair_depth_only.frag" />
-    <None Include="res\shaders\hair_depth_only.vert" />
-    <None Include="res\shaders\hair_depth_only_peeled.frag" />
-    <None Include="res\shaders\hair_depth_only_peeled.vert" />
-    <None Include="res\shaders\hair_layer_composite.comp" />
-    <None Include="res\shaders\solid_color.frag" />
-    <None Include="res\shaders\solid_color.vert" />
+    <None Include="..\..\..\GLWater\OpenGLWater\OpenGLWater\res\shaders\hair_depth_only.frag" />
+    <None Include="..\..\..\GLWater\OpenGLWater\OpenGLWater\res\shaders\hair_depth_only.vert" />
+    <None Include="res\shaders\gl_hair_final_composite.comp" />
+    <None Include="res\shaders\gl_hair_depth_peel.frag" />
+    <None Include="res\shaders\gl_hair_depth_peel.vert" />
+    <None Include="res\shaders\gl_hair_layer_composite.comp" />
+    <None Include="res\shaders\gl_solid_color.frag" />
+    <None Include="res\shaders\gl_solid_color.vert" />
     <None Include="res\shaders\terrain.frag" />
     <None Include="res\shaders\terrain.vert" />
     <None Include="res\shaders\skybox.frag" />
     <None Include="res\shaders\skybox.vert" />
+    <None Include="res\shaders\gl_lighting.frag" />
+    <None Include="res\shaders\gl_lighting.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\API\OpenGL\GL_backend.h" />
@@ -67,8 +63,6 @@
     <ClInclude Include="src\File\AssimpImporter.h" />
     <ClInclude Include="src\File\File.h" />
     <ClInclude Include="src\File\FileFormats.h" />
-    <ClInclude Include="src\FlipbookObject.h" />
-    <ClInclude Include="src\FlipbookTexture.h" />
     <ClInclude Include="src\GameObject.h" />
     <ClInclude Include="src\Hardcoded.hpp" />
     <ClInclude Include="src\Managers\AssetManager.h" />

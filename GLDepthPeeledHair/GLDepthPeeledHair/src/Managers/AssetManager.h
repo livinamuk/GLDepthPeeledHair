@@ -3,7 +3,6 @@
 #include "../File/File.h"
 #include "../Model.hpp"
 #include "../Texture.h"
-#include "../FlipbookTexture.h"
 #include <string>
 
 namespace AssetManager {
@@ -26,7 +25,4 @@ namespace AssetManager {
     Material* GetMaterialByIndex(int index);
     int GetMaterialIndex(const std::string& name);
     std::string& GetMaterialNameByIndex(int index);
-
-    FlipbookTexture* GetFlipbookTextureByIndex(int index);
-    FlipbookTexture* GetFlipbookByName(const std::string& name);
 }

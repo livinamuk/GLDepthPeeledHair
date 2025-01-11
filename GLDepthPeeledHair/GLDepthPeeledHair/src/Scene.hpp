@@ -5,57 +5,18 @@
 #include "Managers/MeshManager.hpp"
 #include "GameObject.h"
 #include "Input.h"
-#include "FlipbookObject.h"
 #include "Util.hpp"
 
 namespace Scene {
 
     inline std::vector<GameObject> g_gameObjects;
-    inline std::vector<FlipbookObject> m_flipbookObjects;
 
     inline void Init() {
-
-        std::string textureNames[3] = {
-            "WaterSplash0_Color_4x4",
-            "WaterSplash1_Color_4x4",
-            "WaterSplash2_Color_4x4"
-        };
-
-        int size = 10;
-        for (int x = -size; x < size; x++) {
-            for (int z = -size; z < size; z++) {
-
-                int rand = Util::RandomInt(0, 2);
-
-                FlipbookObjectCreateInfo createInfo;
-                createInfo.position = glm::vec3(x * 0.5f, 0.0f, z * 0.5f);
-                createInfo.position += glm::vec3(3.5, -1.0f, 7.5f);
-                createInfo.rotation.y = Util::RandomFloat(-1, 1);
-                createInfo.textureName = textureNames[rand];
-                createInfo.animationSpeed = 35.0f;
-                createInfo.billboard = true;
-                createInfo.loop = true;
-                m_flipbookObjects.emplace_back(createInfo);
-            }
-        }
-
-        FlipbookObjectCreateInfo createInfo;
-        createInfo.position = glm::vec3(13 * 0.5f, 0.0f, 13 * 0.5f);
-        createInfo.position += glm::vec3(3.5, -1.0f, 7.5f);
-        createInfo.rotation.y = Util::RandomFloat(-1, 1);
-        createInfo.textureName = "WaterSplash0_Color_4x4";
-        createInfo.animationSpeed = 35.0f;
-        createInfo.billboard = true;
-        createInfo.loop = true;
-        m_flipbookObjects.emplace_back(createInfo);
+        // nothing as of yet
     }
 
     inline void Update(float deltaTime) {
-        GameObject* mermaid = &g_gameObjects[g_gameObjects.size() - 1];
-
-        for (FlipbookObject& flipbookObject : m_flipbookObjects) {
-            flipbookObject.Update(deltaTime);
-        }
+        // nothing as of yet
     }
 
     inline void CreateGameObject() {

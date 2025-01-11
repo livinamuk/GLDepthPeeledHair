@@ -12,7 +12,6 @@
 namespace AssetManager {
 
     std::vector<Texture> g_textures;
-    std::vector<FlipbookTexture> g_flipbookTextures;
     std::vector<Material> g_materials;
     std::vector<Model> g_models;
     std::unordered_map<std::string, int> g_textureIndexMap;
@@ -147,17 +146,6 @@ namespace AssetManager {
         }
     }
 
-    void LoadFlipbookTextures() {
-        FlipbookTexture& flipbookTexture0 = g_flipbookTextures.emplace_back();
-        flipbookTexture0.Load("res/textures/flipbook/WaterSplash0_Color_4x4.tga");
-
-        FlipbookTexture& flipbookTexture1 = g_flipbookTextures.emplace_back();
-        flipbookTexture1.Load("res/textures/flipbook/WaterSplash1_Color_4x4.tga");
-
-        FlipbookTexture& flipbookTexture2 = g_flipbookTextures.emplace_back();
-        flipbookTexture2.Load("res/textures/flipbook/WaterSplash2_Color_4x4.tga");
-    }
-
     void LoadTextures() {
 
         // Generate mip maps
@@ -241,7 +229,6 @@ namespace AssetManager {
         for (int i = 0; i < g_models.size(); i++) {
             g_modelIndexMap[g_models[i].GetName()] = i;
         }
-        LoadFlipbookTextures();
     }
 
     void LoadTexture(Texture* texture) {
@@ -336,26 +323,6 @@ namespace AssetManager {
 
     std::string& GetMaterialNameByIndex(int index) {
         return g_materials[index].m_name;
-    }
-
-    FlipbookTexture* GetFlipbookTextureByIndex(int index) {
-        if (index >= 0 && index < g_flipbookTextures.size()) {
-            return &g_flipbookTextures[index];
-        }
-        else {
-            std::cout << "AssetManager::GetFlipbookTextureByIndex() failed because '" << index << "' was out of range of size not g_flipbookTextures.size()\n";
-            return nullptr;
-        }
-    }
-
-    FlipbookTexture* GetFlipbookByName(const std::string& name) {
-        for (FlipbookTexture& flipbookTexture : g_flipbookTextures) {
-            if (flipbookTexture.m_name == name) {
-                return &flipbookTexture;
-            }
-        }
-        std::cout << "AssetManager::GetFlipbookByName() failed because '" << name << "' was not found\n";
-        return nullptr;
     }
 }
 
