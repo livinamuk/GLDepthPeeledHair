@@ -20,7 +20,7 @@ SHIFT:   slow movement
 F:       fullscreen
 ```
 
-Been using this repo as a playground to implement a new asset loading system too. It loads compressed dds files with embedded mipmaps asynchronously at full framerate via alternating Pixel Buffer Objects.
+Been using this repo as a playground to implement a new asset loading system too. It uploads compressed dds files with embedded mipmaps asynchronously to the gpu in parallel at full framerate via alternating persistently mapped Pixel Buffer Objects.
 
 ![AsyncLoading](AsyncLoading.gif)
 
