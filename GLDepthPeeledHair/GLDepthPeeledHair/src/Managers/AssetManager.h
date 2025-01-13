@@ -3,25 +3,35 @@
 #include "../File/File.h"
 #include "../Model.hpp"
 #include "../Texture.h"
+#include "../API/OpenGL/Types/GL_detachedMesh.hpp"
 #include <string>
 
 namespace AssetManager {
     void Init();
+    void Update();
 
-    bool LoadingIsComplete();
-    void LoadNextItem();
-
-    void LoadTexture(Texture* texture);
-    Texture* GetTextureByName(const std::string& name);
+    // Textures
     int GetTextureIndexByName(const std::string& name, bool ignoreWarning = true);
-    Texture* GetTextureByIndex(int index);
     int GetTextureCount();
+    Texture* GetTextureByName(const std::string& name);
+    Texture* GetTextureByIndex(int index);
 
-    void CreateModelFromData(ModelData& modelData);
+    // Models
+    void LoadModelFromData(Model& model, ModelData& modelData);
     int GetModelIndexByName(const std::string& name);
     Model* CreateModel(const std::string& name);
     Model* GetModelByIndex(int index);
 
+    // Mesh
+    int CreateMesh(const std::string& name, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, glm::vec3 aabbMin, glm::vec3 aabbMax);
+    int CreateMesh(const std::string& name, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices);
+    int GetMeshIndexByName(const std::string& name);
+    int GetMeshIndexByName(const std::string& name);
+    OpenGLDetachedMesh* GetDetachedMeshByName(const std::string& name);
+    OpenGLDetachedMesh* GetMeshByIndex(int index);
+
+    // Materials
+    Material* GetDefaultMaterial();
     Material* GetMaterialByIndex(int index);
     int GetMaterialIndex(const std::string& name);
     std::string& GetMaterialNameByIndex(int index);

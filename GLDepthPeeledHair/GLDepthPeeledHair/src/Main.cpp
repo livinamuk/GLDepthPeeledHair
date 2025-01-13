@@ -7,6 +7,7 @@
 #include "Scene.hpp"
 #include "Camera.h"
 #include "File/File.h"
+#include "Tools/ImageTools.h"
 #include "API/OpenGL/GL_backend.h"
 #include "API/OpenGL/GL_renderer.h"
 
@@ -22,17 +23,14 @@ void Init(int width, int height, std::string title) {
 }
 
 void Update() {
-
-    if (!AssetManager::LoadingIsComplete()) {
-        AssetManager::LoadNextItem();
-    }
-    Scene::SetMaterials();
-
     static float deltaTime = 0;
     static double lastTime = glfwGetTime();
     double currentTime = glfwGetTime();
     deltaTime = static_cast<float>(currentTime - lastTime);
     lastTime = currentTime;
+    OpenGLBackend::UpdateTextureBaking();
+    Scene::SetMaterials();
+    AssetManager::Update();
     Input::Update();
     Camera::Update(deltaTime);
     Audio::Update();
@@ -53,7 +51,7 @@ void Render() {
 }
 
 int main() {
-    Init(1920 * 1.5f, 1080 * 1.5f, "Water");
+    Init(1920, 1080, "GL Depth Peeling");
     while (OpenGLBackend::WindowIsOpen()) {
         Update();
         Render();

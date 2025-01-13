@@ -6,10 +6,11 @@ enum class LoadingState {
     LOADING_COMPLETE
 };
 
-enum class BakingState {
+enum class BakeState {
     AWAITING_BAKE,
     BAKING_IN_PROGRESS,
-    BAKE_COMPLETE
+    BAKE_COMPLETE,
+    UNDEFINED
 };
 
 enum class BlendingMode { 
@@ -21,15 +22,24 @@ enum class BlendingMode {
     DO_NOT_RENDER 
 };
 
-enum class MipmapState {
-    NO_MIPMAPS_REQUIRED,
-    AWAITING_MIPMAP_GENERATION,
-    MIPMAPS_GENERATED
-};
-
 enum class ImageDataType {
     UNCOMPRESSED,
     COMPRESSED,
     EXR,
+    UNDEFINED
+};
+
+enum class TextureWrapMode {
+    REPEAT,
+    MIRRORED_REPEAT,
+    CLAMP_TO_EDGE,
+    CLAMP_TO_BORDER,
+    UNDEFINED
+};
+
+enum class TextureFilter {
+    NEAREST,
+    LINEAR,
+    LINEAR_MIPMAP,
     UNDEFINED
 };

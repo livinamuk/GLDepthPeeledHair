@@ -17,7 +17,7 @@ namespace File {
     uint64_t GetLastModifiedTime(const std::string& filePath);
 
     // Debug
-    void SaveMeshDataToOBJ(const std::string& filepath, const MeshData& mesh);
+    void ExportMeshDataToOBJ(const std::string& filepath, const MeshData& mesh);
     void PrintModelHeader(ModelHeader header, const std::string& identifier);
     void PrintMeshHeader(MeshHeader header, const std::string& identifier);
 }

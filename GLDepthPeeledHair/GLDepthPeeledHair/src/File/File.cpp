@@ -17,10 +17,10 @@
 ▀   ▀ ▀▀▀ ▀▀  ▀▀▀ ▀▀▀ ▀▀▀ */
 
 void File::ExportModel(const ModelData& modelData) {
-    std::string outputPath = "res/assets/models/" + modelData.name + ".model";
+    std::string outputPath = "res/models/" + modelData.name + ".model";
     std::ofstream file(outputPath, std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "Failed to open file for writing: " << outputPath << "\n";
+        std::cout << "Failed to open file for writing: " << outputPath << "\n";
         return;
     }
     ModelHeader modelHeader;
@@ -209,7 +209,7 @@ void File::PrintMeshHeader(MeshHeader header, const std::string& identifier) {
     std::cout << " AABB max: " << Util::Vec3ToString(header.aabbMax) << "\n\n";
 }
 
-void File::SaveMeshDataToOBJ(const std::string& filepath, const MeshData& mesh) {
+void File::ExportMeshDataToOBJ(const std::string& filepath, const MeshData& mesh) {
     std::ofstream file(filepath);
     if (!file.is_open()) {
         std::cerr << "Failed to open file for writing: " << filepath << "\n";

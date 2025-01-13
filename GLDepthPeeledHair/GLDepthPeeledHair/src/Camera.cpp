@@ -18,8 +18,11 @@ namespace Camera {
         g_window = window;
         //gTransform.position = glm::vec3(0, -0.15f, 0);
         //gTransform.rotation = glm::vec3(-0.25f, 0.0f, 0.0f);
-        g_transform.position = glm::vec3(3.44, 0.55, 6.5);
-        g_transform.rotation = glm::vec3(-0.12, 3.14f, 0.00);
+        //g_transform.position = glm::vec3(3.44, 0.55, 6.5);
+        //g_transform.rotation = glm::vec3(-0.12, 3.14f, 0.00);
+        g_transform.position = glm::vec3(3.18, 0.55, 6.06);
+        g_transform.rotation = glm::vec3(-0.40, 3.34, 0.00);
+
         double x, y;
         glfwGetCursorPos(g_window, &x, &y);
         g_mouseOffsetX = x;

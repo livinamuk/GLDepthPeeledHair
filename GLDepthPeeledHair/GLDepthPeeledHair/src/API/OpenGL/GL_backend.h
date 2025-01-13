@@ -10,7 +10,6 @@
 enum class WindowedMode { WINDOWED, FULLSCREEN };
 
 namespace OpenGLBackend {
-
     void Init(int width, int height, std::string title);
     void ToggleFullscreen();
     void SetWindowedMode(const WindowedMode& windowedMode);
@@ -24,7 +23,9 @@ namespace OpenGLBackend {
     bool WindowIsOpen();
     GLFWwindow* GetWindowPtr();
 
-    // Texture uploading
-    void ImmediateBake(Texture& texture);
-    void BakeNextAwaitingTexture(std::vector<Texture>& textures);
+    // Textures
+    void UpdateTextureBaking();
+    void AllocateTextureMemory(Texture& texture);
+    void ImmediateBake(QueuedTextureBake& queuedTextureBake);
+    void AsyncBakeQueuedTextureBake(QueuedTextureBake& queuedTextureBake);
 }

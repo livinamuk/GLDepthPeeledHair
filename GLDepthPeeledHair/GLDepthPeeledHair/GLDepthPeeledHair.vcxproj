@@ -17,16 +17,15 @@
     <ClCompile Include="src\API\OpenGL\Types\GL_shader.cpp" />
     <ClCompile Include="src\API\OpenGL\Types\GL_texture.cpp" />
     <ClCompile Include="src\Audio.cpp" />
+    <ClCompile Include="src\BakeQueue.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\File\AssimpImporter.cpp" />
     <ClCompile Include="src\File\File.cpp" />
     <ClCompile Include="src\GameObject.cpp" />
-    <ClCompile Include="src\DDSHelpers.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\Managers\AssetManager.cpp" />
     <ClCompile Include="src\Texture.cpp" />
-    <ClCompile Include="src\Tools\DDSHelpers.cpp" />
     <ClCompile Include="src\Tools\ImageTools.cpp" />
     <ClCompile Include="vendor\glad\src\glad.c" />
     <ClCompile Include="vendor\stb_image\stb_image.cpp" />
@@ -56,6 +55,7 @@
     <ClInclude Include="src\API\OpenGL\Types\GL_shader.h" />
     <ClInclude Include="src\API\OpenGL\Types\GL_texture.h" />
     <ClInclude Include="src\Audio.h" />
+    <ClInclude Include="src\BakeQueue.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\File\AssimpImporter.h" />
     <ClInclude Include="src\File\File.h" />
@@ -66,7 +66,6 @@
     <ClInclude Include="src\Common\Common.h" />
     <ClInclude Include="src\Common\Enums.h" />
     <ClInclude Include="src\Common\Primtives.hpp" />
-    <ClInclude Include="src\DDSHelpers.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\keycodes.h" />
     <ClInclude Include="src\learnopengl\animation.h" />
@@ -79,10 +78,9 @@
     <ClInclude Include="src\learnopengl\mesh.h" />
     <ClInclude Include="src\learnopengl\model.h" />
     <ClInclude Include="src\learnopengl\model_animation.h" />
-    <ClInclude Include="src\Managers\MeshManager.hpp" />
+    <ClInclude Include="src\Tools\DDS.h" />
     <ClInclude Include="src\Model.hpp" />
     <ClInclude Include="src\Scene.hpp" />
-    <ClInclude Include="src\Tools\DDSHelpers.h" />
     <ClInclude Include="src\Tools\ImageTools.h" />
     <ClInclude Include="src\Util.hpp" />
     <ClInclude Include="src\HeightMap.hpp" />
@@ -167,7 +165,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>vendor\assimp\lib;vendor\GLFW\lib\Release;vendor\compressonator\lib;vendor\fmod\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;Compressonator_MD.lib;assimp-vc143-mt.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;Compressonator_MD.lib;CMP_Framework_MD.lib;assimp-vc143-mt.lib;fmod_vc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)vendor\DLLs\fmod.dll" "$(TargetDir)fmod.dll"

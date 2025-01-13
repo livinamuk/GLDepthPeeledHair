@@ -1,6 +1,5 @@
 #include "GameObject.h"
 #include "Managers/AssetManager.h"
-#include "Managers/MeshManager.hpp"
 
 void GameObject::SetPosition(glm::vec3 position) {
     m_transform.position = position;
@@ -15,6 +14,7 @@ void GameObject::SetModel(const std::string& name) {
     if (m_model) {
         m_meshMaterialIndices.resize(m_model->GetMeshCount());
         m_meshBlendingModes.resize(m_model->GetMeshCount());
+        std::fill(m_meshMaterialIndices.begin(), m_meshMaterialIndices.end(), -1);
     }
     else {
         std::cout << "Failed to set model '" << name << "', it does not exist.\n";
@@ -28,9 +28,7 @@ void GameObject::SetMeshMaterialByMeshName(std::string meshName, const char* mat
     int materialIndex = AssetManager::GetMaterialIndex(materialName);
     if (m_model && materialIndex != -1) {
         for (int i = 0; i < m_model->GetMeshCount(); i++) {
-
-            if (MeshManager::GetMeshByIndex(m_model->GetMeshIndices()[i])->GetName() == meshName) {
-                //if (model->GetMeshNameByIndex(i) == meshName) {
+            if (AssetManager::GetMeshByIndex(m_model->GetMeshIndices()[i])->GetName() == meshName) {
                 m_meshMaterialIndices[i] = materialIndex;
                 return;
             }
@@ -56,7 +54,7 @@ void GameObject::SetMeshBlendingMode(const char* meshName, BlendingMode blending
     if (m_model) {
         bool found = false;
         for (int i = 0; i < m_model->GetMeshIndices().size(); i++) {
-            OpenGLDetachedMesh* mesh = MeshManager::GetMeshByIndex(m_model->GetMeshIndices()[i]);
+            OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(m_model->GetMeshIndices()[i]);
             if (mesh && mesh->GetName() == meshName) {
                 m_meshBlendingModes[i] = blendingMode;
                 found = true;
@@ -71,7 +69,7 @@ void GameObject::SetMeshBlendingMode(const char* meshName, BlendingMode blending
 void GameObject::SetMeshBlendingModes(BlendingMode blendingMode) {
     if (m_model) {
         for (int i = 0; i < m_model->GetMeshIndices().size(); i++) {
-            OpenGLDetachedMesh* mesh = MeshManager::GetMeshByIndex(m_model->GetMeshIndices()[i]);
+            OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(m_model->GetMeshIndices()[i]);
             if (mesh) {
                 m_meshBlendingModes[i] = blendingMode;
             }
@@ -87,7 +85,7 @@ void GameObject::PrintMeshNames() {
     if (m_model) {
         std::cout << m_model->GetName() << "\n";
         for (uint32_t meshIndex : m_model->GetMeshIndices()) {
-            OpenGLDetachedMesh* mesh = MeshManager::GetMeshByIndex(meshIndex);
+            OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(meshIndex);
             if (mesh) {
                 std::cout << "-" << meshIndex << ": " << mesh->GetName() << "\n";
             }

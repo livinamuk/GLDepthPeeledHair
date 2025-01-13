@@ -6,19 +6,23 @@
 enum class CompressionType { DXT3, BC5, UNDEFINED };
 
 namespace ImageTools {
-    void CreateFolder(const char* path);
-    void CompresssDXT3(const char* filename, unsigned char* data, int width, int height, int channelCount);
-    void CompresssDXT3WithMipmaps(const char* filename, unsigned char* data, int width, int height, int channelCount);
-    void CompresssBC5(const char* filename, unsigned char* data, int width, int height, int channelCount);
-    CompressionType CompressionTypeFromTextureSuffix(const std::string& suffix);
-
-    void SwizzleRGBtoBGR(unsigned char* data, int width, int height);
-    unsigned char* DownscaleTexture(unsigned char* data, int width, int height, int newWidth, int newHeight, int channelCount);
-
-    // Mipmaps
-    std::vector<unsigned char*> GenerateMipmaps(unsigned char* data, int width, int height, int channelCount);
-    void SaveMipmaps(const std::string& filepath, std::vector<unsigned char*>& mipmaps, int baseWidth, int baseHeight, int channelCount);
+    // Compresesenator
+    void InitializeCMPFramework();
+    bool IsCMPFrameworkInitialized();
+    void CreateAndExportDDS(const std::string& inputFilepath, const std::string& outputFilepath, bool createMipMaps);
 
     // Texture Data
-    TextureData LoadTextureData(const std::string& filepath, ImageDataType imageDataType);
+    std::vector<TextureData> LoadTextureDataFromDDSThreadSafe(const std::string filepath);
+    std::vector<TextureData> LoadTextureDataFromDDSThreadUnsafe(const std::string filepath);
+
+    TextureData LoadUncompressedTextureData(const std::string& filepath);
+    TextureData LoadEXRData(const std::string& filepath);
+
+    // Util
+    void SaveBitmap(const char* filename, unsigned char* data, int width, int height, int numChannels);
+
+    // Debug
+    std::string CMPErrorToString(int error);
+    std::string CMPFormatToString(int format);
+    int GetChannelCountFromCMPFormat(int format);
 }

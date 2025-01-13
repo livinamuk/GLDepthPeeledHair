@@ -2,9 +2,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include <iostream>
-#include "DDSHelpers.h"
 #include <filesystem>
-#include <mutex>
 #pragma warning(push)
 #pragma warning(disable : 4996)
 #include "stb_image_write.h"
@@ -13,13 +11,177 @@
 #include "../API/OpenGL/GL_util.hpp" // Remove me when you can
 #include "DDS/DDS_Helpers.h"
 #include "cmp_compressonatorlib/compressonator.h"
+#include <mutex>
+#include <fstream>
+#include "DDS.h"
 
 namespace ImageTools {
-    std::mutex g_consoleMutex;
 
-    TextureData LoadUncompressedTextureData(const std::string& filepath);
-    TextureData LoadCompressedTextureData(const std::string& filepath);
-    TextureData LoadEXRData(const std::string& filepath);
+    bool m_CMPFrameworkInitilized = false;
+
+    void InitializeCMPFramework() {
+        CMP_InitFramework();
+        m_CMPFrameworkInitilized = true;
+    }
+
+    bool IsCMPFrameworkInitialized() {
+        return m_CMPFrameworkInitilized;
+    }
+    bool CompressionCallback(CMP_FLOAT fProgress, CMP_DWORD_PTR pUser1, CMP_DWORD_PTR pUser2) {
+        (pUser1);
+        (pUser2);
+        std::printf("\rCompression progress = %3.0f", fProgress);
+        return false;
+    }
+
+    std::vector<TextureData> LoadTextureDataFromDDSThreadSafe(const std::string filepath) {
+        std::vector<TextureData> textureDataLevels;
+
+        // Open the file in binary mode
+        std::ifstream file(filepath, std::ios::binary);
+        if (!file) {
+            std::cout << "Failed to open DDS file: " << filepath << "\n";
+            return textureDataLevels;
+        }
+        // Read and validate the DDS header
+        DDSHeader header;
+        file.read(reinterpret_cast<char*>(&header), sizeof(header));
+        if (header.dwMagic != 0x20534444) { // "DDS " magic number
+            std::cout << "Not a valid DDS file: " << filepath << "\n";
+            return textureDataLevels;
+        }
+        // Check for potential DX10 extended header
+        DDSHeaderDX10 dx10Header = {};
+        if (header.ddspf_dwFourCC == 0x30315844) { // "DX10" FourCC
+            file.read(reinterpret_cast<char*>(&dx10Header), sizeof(dx10Header));
+        }
+        // Retrieve format information
+        DDSFormatInfo formatInfo = GetDDSFormatInfo(header, &dx10Header);
+
+        // Iterate the mipmap levels
+        uint32_t mipWidth = header.dwWidth;
+        uint32_t mipHeight = header.dwHeight;
+        for (uint32_t i = 0; i < header.dwMipMapCount; ++i) {
+            uint32_t blocksWide = (mipWidth + 3) / 4;
+            uint32_t blocksHigh = (mipHeight + 3) / 4;
+            uint32_t dataSize = blocksWide * blocksHigh * formatInfo.blockSize;
+
+            // Read the mipmap data
+            std::vector<char> buffer(dataSize);
+            file.read(buffer.data(), dataSize);
+            if (file.gcount() != static_cast<std::streamsize>(dataSize)) {
+                std::cerr << "Error reading mip level " << i << "\n";
+                break;
+            }
+            // Store the mipmap data
+            TextureData& textureData = textureDataLevels.emplace_back();
+            textureData.m_dataSize = dataSize;
+            textureData.m_data = new char[dataSize];
+            std::memcpy(textureData.m_data, buffer.data(), dataSize);
+            textureData.m_width = mipWidth;
+            textureData.m_height = mipHeight;
+            textureData.m_internalFormat = formatInfo.internalFormat;
+            textureData.m_format = formatInfo.format;
+            textureData.m_channelCount = formatInfo.channelCount;
+            mipWidth = std::max(1u, mipWidth / 2);
+            mipHeight = std::max(1u, mipHeight / 2);
+        }
+
+        file.close();
+        return textureDataLevels;
+    }
+
+    std::vector<TextureData> LoadTextureDataFromDDSThreadUnsafe(const std::string filepath) {
+        if (!IsCMPFrameworkInitialized) {
+            InitializeCMPFramework();
+        }
+        std::vector<TextureData> textureDataLevels;
+        CMP_MipSet mipSetIn = {};
+        CMP_MipSet mipSetOut = {};
+        CMP_ERROR status;
+        KernelOptions kernelOptions = {};
+
+        // Load the texture
+        status = CMP_LoadTexture(filepath.c_str(), &mipSetIn);
+        if (status != CMP_OK) {
+            std::cout << "Error: Failed to load texture. Error code: " << CMPErrorToString(status) << "\n";
+            return textureDataLevels;
+        }
+        // Manually populate missing miplevel data. This probably isn't required,
+        // but you could not figure out how to populate or access it any other way.
+        int currentOffset = 0;
+        for (int i = 0; i < mipSetIn.m_nMipLevels; i++) {
+            CMP_MipLevel* mipLevelData = mipSetIn.m_pMipLevelTable[i];
+            int mipWidth = std::max(static_cast<int>(mipSetIn.dwWidth >> i), 1);
+            int mipHeight = std::max(static_cast<int>(mipSetIn.m_nHeight >> i), 1);
+            int blockSize = (mipSetIn.m_format == CMP_FORMAT_BC1) ? 8 : 16;
+            int rowBytes = ((mipWidth + 3) / 4) * blockSize;
+            int dataSize = rowBytes * ((mipHeight + 3) / 4);
+            mipLevelData->m_nWidth = mipWidth;
+            mipLevelData->m_nHeight = mipHeight;
+            mipLevelData->m_pbData = mipSetIn.pData + currentOffset;
+            mipLevelData->m_dwLinearSize = dataSize;
+            currentOffset += dataSize;
+        }
+        // Fill the TextureData struct for this mipmap level
+        for (int i = 0; i < mipSetIn.m_nMipLevels; i++) {
+            CMP_MipLevel* mipLevelData = mipSetIn.m_pMipLevelTable[i];
+            TextureData& textureData = textureDataLevels.emplace_back();
+            textureData.m_data = mipLevelData->m_pbData;
+            textureData.m_width = mipLevelData->m_nWidth;
+            textureData.m_height = mipLevelData->m_nHeight;
+            textureData.m_dataSize = mipLevelData->m_dwLinearSize;
+            textureData.m_internalFormat = OpenGLUtil::CMPFormatToGLInternalFormat(mipSetIn.m_format);
+            textureData.m_format = OpenGLUtil::CMPFormatToGLFormat(mipSetIn.m_format);
+            textureData.m_channelCount = OpenGLUtil::GetChannelCountFromFormat(mipSetIn.m_format);
+        }
+        return textureDataLevels;
+    }
+
+    void CreateAndExportDDS(const std::string& inputFilepath, const std::string& outputFilepath, bool generateMipMaps) {
+        if (!IsCMPFrameworkInitialized) {
+            InitializeCMPFramework();
+        }
+        CMP_MipSet mipSetIn = {};
+        CMP_MipSet mipSetOut = {};
+        KernelOptions kernelOptions = {};
+        CMP_ERROR status;
+
+        // Load the texture
+        status = CMP_LoadTexture(inputFilepath.c_str(), &mipSetIn);
+        if (status != CMP_OK) {
+            std::cout << "Error: Failed to load texture. Error code: " << CMPErrorToString(status) << "\n";
+            return;
+        }
+        // Generate mipmaps
+        if (generateMipMaps) {
+            CMP_INT mipmapLevelCount = (CMP_INT)(std::log2(std::max(mipSetIn.m_nWidth, mipSetIn.m_nHeight))) + 1;
+            CMP_INT minSize = CMP_CalcMinMipSize(mipSetIn.m_nHeight, mipSetIn.m_nWidth, mipmapLevelCount);
+            CMP_GenerateMIPLevels(&mipSetIn, minSize);
+        }
+        // Compression settings
+        kernelOptions.encodeWith = CMP_HPC; // CMP_CPU // CMP_GPU_OCL
+        kernelOptions.format = CMP_FORMAT_BC7;
+        kernelOptions.fquality = 0.88;
+        kernelOptions.threads = 0;
+       
+        memset(&mipSetOut, 0, sizeof(CMP_MipSet));
+        status = CMP_ProcessTexture(&mipSetIn, &mipSetOut, kernelOptions, CompressionCallback);
+        std::cout << "\n";
+        if (status != CMP_OK) {
+            std::cout << "Failed to process texture " << inputFilepath << ": " << CMPErrorToString(status) << "\n";
+            return;
+        }
+        status = CMP_SaveTexture(outputFilepath.c_str(), &mipSetOut);
+        if (status != CMP_OK) {
+            CMP_FreeMipSet(&mipSetIn);
+            std::cout << "Failed to save texture " << inputFilepath << ": " << CMPErrorToString(status) << "\n";
+            return;
+        }
+        // Cleanup
+        CMP_FreeMipSet(&mipSetIn);
+        CMP_FreeMipSet(&mipSetOut);
+    }
 
     TextureData LoadUncompressedTextureData(const std::string& filepath) {
         stbi_set_flip_vertically_on_load(false);
@@ -29,20 +191,6 @@ namespace ImageTools {
         textureData.m_dataSize = textureData.m_width * textureData.m_height * textureData.m_channelCount;
         textureData.m_format = OpenGLUtil::GetFormatFromChannelCount(textureData.m_channelCount);
         textureData.m_internalFormat = OpenGLUtil::GetInternalFormatFromChannelCount(textureData.m_channelCount);
-        return textureData;
-    }
-
-    TextureData LoadCompressedTextureData(const std::string& filepath) {
-        CMP_Texture cmpTexture;
-        LoadDDSFile(filepath.c_str(), cmpTexture);
-        TextureData textureData;
-        textureData.m_data = cmpTexture.pData;
-        textureData.m_width = cmpTexture.dwWidth;
-        textureData.m_height = cmpTexture.dwHeight;
-        textureData.m_dataSize = cmpTexture.dwDataSize;
-        textureData.m_internalFormat = OpenGLUtil::CMPFormatToGLInternalFromat(cmpTexture.format);
-        textureData.m_format = OpenGLUtil::CMPFormatToGLFormat(cmpTexture.format);
-        textureData.m_channelCount = OpenGLUtil::GetChannelCountFromFormat(textureData.m_format);
         return textureData;
     }
 
@@ -64,327 +212,209 @@ namespace ImageTools {
         textureData.m_internalFormat = -1; // TODO
         return textureData;
     }
-}
 
-void SaveAsBitmap(const char* filename, unsigned char* data, int width, int height, int numChannels) {
-    unsigned char* flippedData = (unsigned char*)malloc(width * height * numChannels);
-    if (!flippedData) {
-        std::cerr << "[ERROR] Failed to allocate memory for flipped data\n";
-        return;
+    void SaveBitmap(const char* filename, unsigned char* data, int width, int height, int numChannels) {
+        unsigned char* flippedData = (unsigned char*)malloc(width * height * numChannels);
+        if (!flippedData) {
+            std::cerr << "[ERROR] Failed to allocate memory for flipped data\n";
+            return;
+        }
+        for (int y = 0; y < height; ++y) {
+            std::memcpy(flippedData + (height - y - 1) * width * numChannels,
+                data + y * width * numChannels,
+                width * numChannels);
+        }
+        if (stbi_write_bmp(filename, width, height, numChannels, flippedData)) {
+            std::cout << "Saved bitmap: " << filename << "\n";
+        }
+        else {
+            std::cerr << "Failed to save bitmap: " << filename << "\n";
+        }
+        free(flippedData);
     }
-    for (int y = 0; y < height; ++y) {
-        std::memcpy(flippedData + (height - y - 1) * width * numChannels,
-            data + y * width * numChannels,
-            width * numChannels);
-    }
-    if (stbi_write_bmp(filename, width, height, numChannels, flippedData)) {
-        std::cout << "Saved bitmap: " << filename << "\n";
-    }
-    else {
-        std::cerr << "Failed to save bitmap: " << filename << "\n";
-    }
-    free(flippedData);
-}
 
-void ImageTools::CompresssDXT3(const char* filename, unsigned char* data, int width, int height, int numChannels) {
-
-    if (numChannels == 3) {
-        const uint64_t pitch = static_cast<uint64_t>(width) * 3UL;
-        for (auto r = 0; r < height; ++r) {
-            uint8_t* row = data + r * pitch;
-            for (auto c = 0UL; c < static_cast<uint64_t>(width); ++c) {
-                uint8_t* pixel = row + c * 3UL;
-                std::swap(pixel[0], pixel[2]);  // Swap Red and Blue channels using std::swap for clarity
+    void CreateFolder(const char* path) {
+        std::filesystem::path dir(path);
+        if (!std::filesystem::exists(dir)) {
+            if (!std::filesystem::create_directories(dir) && !std::filesystem::exists(dir)) {
+                std::cout << "Failed to create directory: " << path << "\n";
             }
         }
     }
-    CMP_Texture srcTexture = { 0 };
-    srcTexture.dwSize = sizeof(CMP_Texture);
-    srcTexture.dwWidth = width;
-    srcTexture.dwHeight = height;
-    srcTexture.dwPitch = numChannels == 4 ? width * 4 : width * 3;
-    srcTexture.format = numChannels == 4 ? CMP_FORMAT_RGBA_8888 : CMP_FORMAT_RGB_888;
-    srcTexture.dwDataSize = srcTexture.dwHeight * srcTexture.dwPitch;
-    srcTexture.pData = data;
 
-    CMP_Texture destTexture = { 0 };
-    destTexture.dwSize = sizeof(CMP_Texture);
-    destTexture.dwWidth = width;
-    destTexture.dwHeight = height;
-    destTexture.dwPitch = width;
-    destTexture.format = CMP_FORMAT_DXT3;
-    destTexture.dwDataSize = CMP_CalculateBufferSize(&destTexture);
-    destTexture.pData = (CMP_BYTE*)malloc(destTexture.dwDataSize);
-
-    CMP_CompressOptions options = { 0 };
-    options.dwSize = sizeof(options);
-    options.fquality = 0.88f;
-
-    CMP_ERROR cmp_status = CMP_ConvertTexture(&srcTexture, &destTexture, &options, nullptr);
-    if (cmp_status != CMP_OK) {
-        free(destTexture.pData);
-        std::lock_guard<std::mutex> lock(g_consoleMutex);
-        std::cerr << "Compression failed for " << filename << " with error code: " << cmp_status << "\n";
-        return;
-    }
-    else {
-        CreateFolder("res/textures/dds/");
-        SaveDDSFile(filename, destTexture);
-        free(destTexture.pData);
-        std::lock_guard<std::mutex> lock(g_consoleMutex);
-        std::cout << "Saving compressed texture: " << filename << "\n";
-    }
-}
-
-unsigned char* ImageTools::DownscaleTexture(unsigned char* data, int width, int height, int newWidth, int newHeight, int numChannels) {
-    unsigned char* downscaledData = (unsigned char*)malloc(newWidth * newHeight * numChannels);
-    if (!downscaledData) {
-        std::cerr << "Failed to allocate memory for downscaled texture\n";
-        return nullptr;
-    }
-    float xRatio = static_cast<float>(width) / newWidth;
-    float yRatio = static_cast<float>(height) / newHeight;
-    for (int y = 0; y < newHeight; ++y) {
-        for (int x = 0; x < newWidth; ++x) {
-            int srcXStart = static_cast<int>(x * xRatio);
-            int srcYStart = static_cast<int>(y * yRatio);
-            int srcXEnd = static_cast<int>((x + 1) * xRatio);
-            int srcYEnd = static_cast<int>((y + 1) * yRatio);
-            int area = (srcXEnd - srcXStart) * (srcYEnd - srcYStart);
-            for (int c = 0; c < numChannels; ++c) {
-                int sum = 0;
-                for (int srcY = srcYStart; srcY < srcYEnd; ++srcY) {
-                    for (int srcX = srcXStart; srcX < srcXEnd; ++srcX) {
-                        int srcIndex = (srcY * width + srcX) * numChannels + c;
-                        sum += data[srcIndex];
-                    }
-                }
-                downscaledData[(y * newWidth + x) * numChannels + c] = static_cast<unsigned char>(sum / area);
-            }
+    std::string CMPFormatToString(int format) {
+        switch (format) {
+        case 0x0000: return "CMP_FORMAT_Unknown";
+        case 0x0010: return "CMP_FORMAT_RGBA_8888_S";
+        case 0x0020: return "CMP_FORMAT_ARGB_8888_S";
+        case 0x0030: return "CMP_FORMAT_ARGB_8888";
+        case 0x0040: return "CMP_FORMAT_ABGR_8888";
+        case 0x0050: return "CMP_FORMAT_RGBA_8888";
+        case 0x0060: return "CMP_FORMAT_BGRA_8888";
+        case 0x0070: return "CMP_FORMAT_RGB_888";
+        case 0x0080: return "CMP_FORMAT_RGB_888_S";
+        case 0x0090: return "CMP_FORMAT_BGR_888";
+        case 0x00A0: return "CMP_FORMAT_RG_8_S";
+        case 0x00B0: return "CMP_FORMAT_RG_8";
+        case 0x00C0: return "CMP_FORMAT_R_8_S";
+        case 0x00D0: return "CMP_FORMAT_R_8";
+        case 0x00E0: return "CMP_FORMAT_ARGB_2101010";
+        case 0x00F0: return "CMP_FORMAT_RGBA_1010102";
+        case 0x0100: return "CMP_FORMAT_ARGB_16";
+        case 0x0110: return "CMP_FORMAT_ABGR_16";
+        case 0x0120: return "CMP_FORMAT_RGBA_16";
+        case 0x0130: return "CMP_FORMAT_BGRA_16";
+        case 0x0140: return "CMP_FORMAT_RG_16";
+        case 0x0150: return "CMP_FORMAT_R_16";
+        case 0x1000: return "CMP_FORMAT_RGBE_32F";
+        case 0x1010: return "CMP_FORMAT_ARGB_16F";
+        case 0x1020: return "CMP_FORMAT_ABGR_16F";
+        case 0x1030: return "CMP_FORMAT_RGBA_16F";
+        case 0x1040: return "CMP_FORMAT_BGRA_16F";
+        case 0x1050: return "CMP_FORMAT_RG_16F";
+        case 0x1060: return "CMP_FORMAT_R_16F";
+        case 0x1070: return "CMP_FORMAT_ARGB_32F";
+        case 0x1080: return "CMP_FORMAT_ABGR_32F";
+        case 0x1090: return "CMP_FORMAT_RGBA_32F";
+        case 0x10A0: return "CMP_FORMAT_BGRA_32F";
+        case 0x10B0: return "CMP_FORMAT_RGB_32F";
+        case 0x10C0: return "CMP_FORMAT_BGR_32F";
+        case 0x10D0: return "CMP_FORMAT_RG_32F";
+        case 0x10E0: return "CMP_FORMAT_R_32F";
+        case 0x2000: return "CMP_FORMAT_BROTLIG";
+        case 0x0011: return "CMP_FORMAT_BC1";
+        case 0x0021: return "CMP_FORMAT_BC2";
+        case 0x0031: return "CMP_FORMAT_BC3";
+        case 0x0041: return "CMP_FORMAT_BC4";
+        case 0x1041: return "CMP_FORMAT_BC4_S";
+        case 0x0051: return "CMP_FORMAT_BC5";
+        case 0x1051: return "CMP_FORMAT_BC5_S";
+        case 0x0061: return "CMP_FORMAT_BC6H";
+        case 0x1061: return "CMP_FORMAT_BC6H_SF";
+        case 0x0071: return "CMP_FORMAT_BC7";
+        case 0x0141: return "CMP_FORMAT_ATI1N";
+        case 0x0151: return "CMP_FORMAT_ATI2N";
+        case 0x0152: return "CMP_FORMAT_ATI2N_XY";
+        case 0x0153: return "CMP_FORMAT_ATI2N_DXT5";
+        case 0x0211: return "CMP_FORMAT_DXT1";
+        case 0x0221: return "CMP_FORMAT_DXT3";
+        case 0x0231: return "CMP_FORMAT_DXT5";
+        case 0x0252: return "CMP_FORMAT_DXT5_xGBR";
+        case 0x0253: return "CMP_FORMAT_DXT5_RxBG";
+        case 0x0254: return "CMP_FORMAT_DXT5_RBxG";
+        case 0x0255: return "CMP_FORMAT_DXT5_xRBG";
+        case 0x0256: return "CMP_FORMAT_DXT5_RGxB";
+        case 0x0257: return "CMP_FORMAT_DXT5_xGxR";
+        case 0x0301: return "CMP_FORMAT_ATC_RGB";
+        case 0x0302: return "CMP_FORMAT_ATC_RGBA_Explicit";
+        case 0x0303: return "CMP_FORMAT_ATC_RGBA_Interpolated";
+        case 0x0A01: return "CMP_FORMAT_ASTC";
+        case 0x0A02: return "CMP_FORMAT_APC";
+        case 0x0A03: return "CMP_FORMAT_PVRTC";
+        case 0x0E01: return "CMP_FORMAT_ETC_RGB";
+        case 0x0E02: return "CMP_FORMAT_ETC2_RGB";
+        case 0x0E03: return "CMP_FORMAT_ETC2_SRGB";
+        case 0x0E04: return "CMP_FORMAT_ETC2_RGBA";
+        case 0x0E05: return "CMP_FORMAT_ETC2_RGBA1";
+        case 0x0E06: return "CMP_FORMAT_ETC2_SRGBA";
+        case 0x0E07: return "CMP_FORMAT_ETC2_SRGBA1";
+        case 0x0B01: return "CMP_FORMAT_BINARY";
+        case 0x0B02: return "CMP_FORMAT_GTC";
+        case 0x0B03: return "CMP_FORMAT_BASIS";
+        case 0xFFFF: return "CMP_FORMAT_MAX";
+        default: return "Unknown Format";
         }
     }
-    return downscaledData;
-}
 
-void ImageTools::SwizzleRGBtoBGR(unsigned char* data, int width, int height) {
-    const uint64_t pitch = static_cast<uint64_t>(width) * 3UL;
-    for (auto r = 0; r < height; ++r) {
-        uint8_t* row = data + r * pitch;
-        for (auto c = 0UL; c < static_cast<uint64_t>(width); ++c) {
-            uint8_t* pixel = row + c * 3UL;
-            std::swap(pixel[0], pixel[2]);  // Swap Red and Blue channels using std::swap for clarity
+    std::string CMPErrorToString(int error) {
+        switch (error) {
+            case CMP_OK:                            return "Ok.";
+            case CMP_ABORTED:                       return "The conversion was aborted.";
+            case CMP_ERR_INVALID_SOURCE_TEXTURE:    return "The source texture is invalid.";
+            case CMP_ERR_INVALID_DEST_TEXTURE:      return "The destination texture is invalid.";
+            case CMP_ERR_UNSUPPORTED_SOURCE_FORMAT: return "The source format is not a supported format.";
+            case CMP_ERR_UNSUPPORTED_DEST_FORMAT:   return "The destination format is not a supported format.";
+            case CMP_ERR_UNSUPPORTED_GPU_ASTC_DECODE: return "The GPU hardware is not supported for ASTC decoding.";
+            case CMP_ERR_UNSUPPORTED_GPU_BASIS_DECODE: return "The GPU hardware is not supported for BASIS decoding.";
+            case CMP_ERR_SIZE_MISMATCH:             return "The source and destination texture sizes do not match.";
+            case CMP_ERR_UNABLE_TO_INIT_CODEC:      return "Compressonator was unable to initialize the codec needed for conversion.";
+            case CMP_ERR_UNABLE_TO_INIT_DECOMPRESSLIB: return "GPU_Decode Lib was unable to initialize the codec needed for decompression.";
+            case CMP_ERR_UNABLE_TO_INIT_COMPUTELIB: return "Compute Lib was unable to initialize the codec needed for compression.";
+            case CMP_ERR_CMP_DESTINATION:           return "Error in compressing destination texture.";
+            case CMP_ERR_MEM_ALLOC_FOR_MIPSET:      return "Memory error: allocating MIPSet compression level data buffer.";
+            case CMP_ERR_UNKNOWN_DESTINATION_FORMAT: return "The destination codec type is unknown.";
+            case CMP_ERR_FAILED_HOST_SETUP:         return "Failed to setup host for processing.";
+            case CMP_ERR_PLUGIN_FILE_NOT_FOUND:     return "The required plugin library was not found.";
+            case CMP_ERR_UNABLE_TO_LOAD_FILE:       return "The requested file was not loaded.";
+            case CMP_ERR_UNABLE_TO_CREATE_ENCODER:  return "Request to create an encoder failed.";
+            case CMP_ERR_UNABLE_TO_LOAD_ENCODER:    return "Unable to load an encoder library.";
+            case CMP_ERR_NOSHADER_CODE_DEFINED:     return "No shader code is available for the requested framework.";
+            case CMP_ERR_GPU_DOESNOT_SUPPORT_COMPUTE: return "The GPU device selected does not support compute.";
+            case CMP_ERR_NOPERFSTATS:               return "No performance stats are available.";
+            case CMP_ERR_GPU_DOESNOT_SUPPORT_CMP_EXT: return "The GPU does not support the requested compression extension.";
+            case CMP_ERR_GAMMA_OUTOFRANGE:          return "Gamma value set for processing is out of range.";
+            case CMP_ERR_PLUGIN_SHAREDIO_NOT_SET:   return "The plugin shared IO call was not set and is required for this plugin to operate.";
+            case CMP_ERR_UNABLE_TO_INIT_D3DX:       return "Unable to initialize DirectX SDK or get a specific DX API.";
+            case CMP_FRAMEWORK_NOT_INITIALIZED:     return "CMP_InitFramework failed or not called.";
+            case CMP_ERR_GENERIC:                   return "An unknown error occurred.";
+            default:                                return "Unknown CMP_ERROR value.";
         }
     }
-}
 
-std::vector<unsigned char*> ImageTools::GenerateMipmaps(unsigned char* data, int width, int height, int numChannels) {
-    std::vector<unsigned char*> mipmaps;
-    unsigned char* currentData = data;
-    int currentWidth = width;
-    int currentHeight = height;
-    mipmaps.push_back(currentData);
-    while (currentWidth > 1 || currentHeight > 1) {
-        int nextWidth = std::max(1, currentWidth / 2);
-        int nextHeight = std::max(1, currentHeight / 2);
-        unsigned char* nextData = DownscaleTexture(currentData, currentWidth, currentHeight, nextWidth, nextHeight, numChannels);
-        if (!nextData) {
-            std::cerr << "Failed to create mipmap level\n";
-            break;
-        }
-        mipmaps.push_back(nextData);
-        currentWidth = nextWidth;
-        currentHeight = nextHeight;
-        currentData = nextData;
-    }
-    return mipmaps;
-}
-
-void ImageTools::SaveMipmaps(const std::string& filepath, std::vector<unsigned char*>& mipmaps, int baseWidth, int baseHeight, int channelCount) {
-    for (size_t i = 0; i < mipmaps.size(); ++i) {
-        int mipWidth = std::max(1, baseWidth >> i);
-        int mipHeight = std::max(1, baseHeight >> i);
-        std::string mipPath = filepath;
-        mipPath += "_mip" + std::to_string(i) + ".bmp";
-        SaveAsBitmap(mipPath.c_str(), mipmaps[i], mipWidth, mipHeight, channelCount);
-    }
-}
-
-TextureData ImageTools::LoadTextureData(const std::string& filepath, ImageDataType imageDataType) {
-    if (imageDataType == ImageDataType::UNCOMPRESSED) {
-        return LoadUncompressedTextureData(filepath);
-    }
-    if (imageDataType == ImageDataType::COMPRESSED) {
-        return LoadCompressedTextureData(filepath);
-    }
-    if (imageDataType == ImageDataType::EXR) {
-        return LoadEXRData(filepath);
-    }
-}
-
-int CalculateMipLevels(int width, int height) {
-    int levels = 1; // Base level (original resolution)
-    while (width > 1 || height > 1) {
-        width = std::max(1, width / 2);
-        height = std::max(1, height / 2);
-        levels++;
-    }
-    return levels;
-}
-
-void CleanupMipSet(CMP_MipSet& mipSet) {
-    if (mipSet.m_pMipLevelTable) {
-        for (int i = 0; i < mipSet.m_nDepth; ++i) {
-            if (mipSet.m_pMipLevelTable[i]) {
-                delete[] mipSet.m_pMipLevelTable[i];
-            }
-        }
-        delete[] mipSet.m_pMipLevelTable;
-    }
-}
-
-
-
-
-
-void ImageTools::CompresssDXT3WithMipmaps(const char* filename, unsigned char* data, int width, int height, int numChannels) {  
-    //// Swizzle RGB to BGR for compatibility with compression tools 
-    //if (numChannels == 3) {
-    //    SwizzleRGBtoBGR(data, width, height);
-    //}
-    //// Generate mipmaps
-    //std::vector<unsigned char*> mipmaps = GenerateMipmaps(data, width, height, numChannels);
-    //
-    //CMP_MipSet compressedMipSet;
-    //memset(&compressedMipSet, 0, sizeof(CMP_MipSet));
-    //compressedMipSet.m_nWidth = width;
-    //compressedMipSet.m_nHeight = height;
-    //compressedMipSet.m_nMipLevels = mipmaps.size();
-    //compressedMipSet.m_nDepth = 1; // Single 2D texture
-    //compressedMipSet.m_pMipLevelTable = new CMP_MipLevel * [compressedMipSet.m_nDepth];
-    //compressedMipSet.m_pMipLevelTable[0] = new CMP_MipLevel[compressedMipSet.m_nMipLevels];
-    //
-    //for (int i = 0; i < compressedMipSet.m_nMipLevels; ++i) {
-    //    memset(&compressedMipSet.m_pMipLevelTable[0][i], 0, sizeof(CMP_MipLevel));
-    //}
-    //
-    //for (size_t i = 0; i < mipmaps.size(); ++i) {
-    //    CMP_Texture srcTexture = {};
-    //    srcTexture.dwSize = sizeof(CMP_Texture);
-    //    srcTexture.dwWidth = std::max(1, width >> i);
-    //    srcTexture.dwHeight = std::max(1, height >> i);
-    //    srcTexture.dwPitch = srcTexture.dwWidth * numChannels;
-    //    srcTexture.format = numChannels == 4 ? CMP_FORMAT_RGBA_8888 : CMP_FORMAT_RGB_888;
-    //    srcTexture.dwDataSize = srcTexture.dwHeight * srcTexture.dwPitch;
-    //    srcTexture.pData = mipmaps[i];
-    //
-    //    CMP_Texture destTexture = {};
-    //    destTexture.dwSize = sizeof(CMP_Texture);
-    //    destTexture.dwWidth = srcTexture.dwWidth;
-    //    destTexture.dwHeight = srcTexture.dwHeight;
-    //    destTexture.format = CMP_FORMAT_DXT3;
-    //    destTexture.dwDataSize = CMP_CalculateBufferSize(&destTexture);
-    //    destTexture.pData = (CMP_BYTE*)malloc(destTexture.dwDataSize);
-    //
-    //    CMP_CompressOptions options = {};
-    //    options.dwSize = sizeof(options);
-    //    options.fquality = 0.88f;
-    //
-    //    CMP_ERROR cmp_status = CMP_ConvertTexture(&srcTexture, &destTexture, &options, nullptr);
-    //    if (cmp_status != CMP_OK) {
-    //        std::cerr << "Compression failed for mip level " << i << " with error code: " << cmp_status << "\n";
-    //        free(destTexture.pData);
-    //        continue;
-    //    }
-    //
-    //    CMP_MipLevel* mipLevel = GetMipLevel(&compressedMipSet, 0, i);
-    //    mipLevel->m_pbData = destTexture.pData;
-    //    mipLevel->m_nWidth = destTexture.dwWidth;
-    //    mipLevel->m_nHeight = destTexture.dwHeight;
-    //    mipLevel->m_dwLinearSize = destTexture.dwDataSize;
-    //}
-    //
-    //// SaveDDSFileWithMipmaps(filename, compressedMipSet);
-    //
-    //for (size_t i = 1; i < mipmaps.size(); ++i) {
-    //    free(mipmaps[i]);
-    //}
-    //
-    //std::cout << "Compression completed successfully for " << filename << "\n";
-    //
-    //
-}
-
-void ImageTools::CompresssBC5(const char* filename, unsigned char* data, int width, int height, int numChannels) {
-    // Copy RGB data and add Alpha channel
-    uint8_t* rgbaData = (uint8_t*)malloc(width * height * 4);
-    for (int i = 0; i < width * height; ++i) {
-        rgbaData[i * 4 + 0] = data[i * 3 + 0];  // Copy Red channel
-        rgbaData[i * 4 + 1] = data[i * 3 + 1];  // Copy Green channel
-        rgbaData[i * 4 + 2] = data[i * 3 + 2];  // Copy Blue channel
-        rgbaData[i * 4 + 3] = 255;              // Set Alpha to 255
-    }
-    numChannels = 4;
-
-    CMP_Texture srcTexture = { 0 };
-    srcTexture.dwSize = sizeof(CMP_Texture);
-    srcTexture.dwWidth = width;
-    srcTexture.dwHeight = height;
-    srcTexture.dwPitch = width * numChannels; 
-    srcTexture.format = CMP_FORMAT_RGBA_8888;
-    srcTexture.dwDataSize = srcTexture.dwHeight * srcTexture.dwPitch;
-    srcTexture.pData = rgbaData;
-
-    CMP_Texture destTexture = { 0 };
-    destTexture.dwSize = sizeof(CMP_Texture);
-    destTexture.dwWidth = width;
-    destTexture.dwHeight = height;
-    destTexture.dwPitch = width;
-    destTexture.format = CMP_FORMAT_BC5;
-    destTexture.dwDataSize = CMP_CalculateBufferSize(&destTexture);
-    destTexture.pData = (CMP_BYTE*)malloc(destTexture.dwDataSize);
-
-    if (destTexture.pData == nullptr) {
-        std::lock_guard<std::mutex> lock(g_consoleMutex);
-        std::cerr << "Failed to allocate memory for destination texture!\n";
-        free(rgbaData);
-        return;
-    }
-    CMP_CompressOptions options = { 0 };
-    options.dwSize = sizeof(options);
-    options.fquality = 1.00f;
-
-    CMP_ERROR cmp_status = CMP_ConvertTexture(&srcTexture, &destTexture, &options, nullptr);
-
-    if (cmp_status != CMP_OK) {
-        std::lock_guard<std::mutex> lock(g_consoleMutex);
-        std::cerr << "Compression failed with error code: " << cmp_status << "\n";
-        free(destTexture.pData);
-        free(rgbaData);
-        return;
-    } 
-    else {
-        std::lock_guard<std::mutex> lock(g_consoleMutex);
-        std::cout << "Saving compressed texture: " << filename << "\n";
-        SaveDDSFile(filename, destTexture);
-        free(destTexture.pData);
-        free(rgbaData);
-    } 
-}
-
-void ImageTools::CreateFolder(const char* path) {
-    std::filesystem::path dir(path);
-    if (!std::filesystem::exists(dir)) {
-        if (!std::filesystem::create_directories(dir) && !std::filesystem::exists(dir)) {
-            std::cout << "Failed to create directory: " << path << "\n";
+    int GetChannelCountFromCMPFormat(int format) {
+        switch (format) {
+            // Uncompressed formats
+            case CMP_FORMAT_RGBA_8888:
+            case CMP_FORMAT_BGRA_8888:
+            case CMP_FORMAT_ARGB_8888:
+            case CMP_FORMAT_ABGR_8888:
+            case CMP_FORMAT_RGBA_1010102:
+            case CMP_FORMAT_ARGB_2101010:
+                return 4; // 4 channels
+            case CMP_FORMAT_RGB_888:
+            case CMP_FORMAT_BGR_888:
+            case CMP_FORMAT_RGBE_32F:
+                return 3; // 3 channels
+            case CMP_FORMAT_RG_8:
+            case CMP_FORMAT_RG_16:
+            case CMP_FORMAT_RG_16F:
+            case CMP_FORMAT_RG_32F:
+                return 2; // 2 channels
+            case CMP_FORMAT_R_8:
+            case CMP_FORMAT_R_16:
+            case CMP_FORMAT_R_16F:
+            case CMP_FORMAT_R_32F:
+                return 1; // 1 channel
+                // Compressed formats
+            case CMP_FORMAT_BC1:    // DXT1
+                return 3; // RGB
+            case CMP_FORMAT_BC2:    // DXT3
+            case CMP_FORMAT_BC3:    // DXT5
+                return 4; // RGBA
+            case CMP_FORMAT_BC4:    // ATI1
+                return 1; // Red only
+            case CMP_FORMAT_BC5:    // ATI2
+                return 2; // Red, Green
+            case CMP_FORMAT_BC6H:   // HDR (RGB Half)
+                return 3; // RGB
+            case CMP_FORMAT_BC7:    // RGB or RGBA
+                return 4; // RGBA
+            case CMP_FORMAT_ASTC:   // Adaptive Scalable Texture Compression
+                return 4; // Typically RGBA
+            case CMP_FORMAT_ETC_RGB:
+                return 3; // RGB
+            case CMP_FORMAT_ETC2_RGBA:
+                return 4; // RGBA
+            default:
+                return 0; // Unknown or unsupported format
         }
     }
-}
 
-CompressionType ImageTools::CompressionTypeFromTextureSuffix(const std::string& suffix) {
-    if (suffix == "NRM") {
-        return CompressionType::BC5;
-    }
-    else {
-        return CompressionType::DXT3;
+    void PrintMipSetInfo(CMP_MipSet& mipset) {
+        std::cout << "Width: " << mipset.m_nWidth << "\n";
+        std::cout << "Height: " << mipset.m_nHeight << "\n";
+        std::cout << "Channels: " << std::to_string(mipset.m_nChannels) << "\n";
+        std::cout << "Format: " << CMPFormatToString(mipset.m_format) << "\n";
+        std::cout << "Mipmaps: " << mipset.m_nMaxMipLevels << "\n";
     }
 }

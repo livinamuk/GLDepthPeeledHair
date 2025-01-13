@@ -17,8 +17,7 @@ ModelData AssimpImporter::ImportFbx(const std::string filepath) {
         aiProcess_JoinIdenticalVertices |
         aiProcess_ImproveCacheLocality |
         aiProcess_RemoveRedundantMaterials |
-        aiProcess_FlipUVs |
-        aiProcess_FindDegenerates
+        aiProcess_FlipUVs
     );
     if (!scene) {
         std::cout << "LoadAndExportCustomFormat() failed to loaded model " << filepath << "\n";

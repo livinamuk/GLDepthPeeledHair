@@ -1,130 +1,259 @@
-#pragma once
+﻿#pragma once
 #include "AssetManager.h"
-#include "../File/AssimpImporter.h"
-#include "../Managers/MeshManager.hpp"
-#include "../Hardcoded.hpp"
-#include "../Util.hpp"
-#include "../Tools/DDSHelpers.h"
-#include "../Tools/ImageTools.h"
-#include "../API/OpenGL/GL_backend.h"
 #include <thread>
+#include "../API/OpenGL/GL_backend.h"
+#include "../API/OpenGL/GL_util.hpp"
+#include "../File/AssimpImporter.h"
+#include "../Tools/ImageTools.h"
+#include "../BakeQueue.h"
+#include "../Util.hpp"
 
 namespace AssetManager {
 
     std::vector<Texture> g_textures;
     std::vector<Material> g_materials;
     std::vector<Model> g_models;
+    std::vector<OpenGLDetachedMesh> g_meshes;
     std::unordered_map<std::string, int> g_textureIndexMap;
     std::unordered_map<std::string, int> g_materialIndexMap;
     std::unordered_map<std::string, int> g_modelIndexMap;
-    bool g_loadingComplete = false;
 
-    bool FileInfoIsAlbedoTexture(const FileInfo& fileInfo) {
-        if (fileInfo.name.size() >= 4 && fileInfo.name.substr(fileInfo.name.size() - 4) == "_ALB") {
-            return true;
-        }
-        return false;
+    void LoadFont();
+    void LoadModels();
+    void LoadTextures();
+    void LoadTexture(Texture* texture);
+    void BuildMaterials();
+    void LoadPendingTexturesAsync();
+    void CompressMissingDDSTexutres();
+    bool FileInfoIsAlbedoTexture(const FileInfo& fileInfo);
+    std::string GetMaterialNameFromFileInfo(const FileInfo& fileInfo);
+
+    void Init() {
+        CompressMissingDDSTexutres();
+        LoadFont();
+        LoadModels();
+        LoadTextures();
+        BuildMaterials();
     }
 
-    std::string GetMaterialNameFromFileInfo(const FileInfo& fileInfo) {
-        const std::string suffix = "_ALB";
-        if (fileInfo.name.size() > suffix.size() && fileInfo.name.substr(fileInfo.name.size() - suffix.size()) == suffix) {
-            return fileInfo.name.substr(0, fileInfo.name.size() - suffix.size());
-        }
-        return "";
-    }
-
-    void BuildMaterials() {
+    void Update() {
         for (Texture& texture : g_textures) {
-            if (FileInfoIsAlbedoTexture(texture.GetFileInfo())) {
-                Material& material = g_materials.emplace_back(Material());
-                material.m_name = GetMaterialNameFromFileInfo(texture.GetFileInfo());
-                int basecolorIndex = AssetManager::GetTextureIndexByName(material.m_name + "_ALB", true);
-                int normalIndex = AssetManager::GetTextureIndexByName(material.m_name + "_NRM", true);
-                int rmaIndex = AssetManager::GetTextureIndexByName(material.m_name + "_RMA", true);
-                int sssIndex = AssetManager::GetTextureIndexByName(material.m_name + "_SSS", true);
-                material.m_basecolor = (basecolorIndex != -1) ? basecolorIndex : AssetManager::GetTextureIndexByName("Empty_NRMRMA");
-                material.m_normal = (normalIndex != -1) ? normalIndex : AssetManager::GetTextureIndexByName("Empty_NRMRMA");
-                material.m_rma = (rmaIndex != -1) ? rmaIndex : AssetManager::GetTextureIndexByName("Empty_NRMRMA");
-                material.m_sss = (sssIndex != -1) ? sssIndex : AssetManager::GetTextureIndexByName("Black");
-            }
-        }
-        // Build index maps
-        for (int i = 0; i < g_materials.size(); i++) {
-            g_materialIndexMap[g_materials[i].m_name] = i;
-        }
-    }
-
-    void LoadCustomFileFormats() {
-
-        // Scan for new obj and fbx
-        for (FileInfo& fileInfo : Util::IterateDirectory("res/assets_raw/models/", { "obj", "fbx" })) {
-            std::string assetPath = "res/assets/models/" + fileInfo.name + ".model";
-            bool exportFile = false;
-            if (Util::FileExists(assetPath)) {
-                uint64_t lastModified = File::GetLastModifiedTime(fileInfo.path);
-                ModelHeader modelHeader = File::ReadModelHeader(assetPath);
-                // If the file timestamps don't match, trigger a re-export
-                if (modelHeader.timestamp != lastModified) {
-                    File::DeleteFile(assetPath);
-                    exportFile = true;
-                }
-            }
-            else {
-                exportFile = true;
-            }
-            if (exportFile) {
-                ModelData modelData = AssimpImporter::ImportFbx(fileInfo.path);
-                File::ExportModel(modelData);
-            }
-        }
-
-        // Import .model files
-        for (FileInfo& fileInfo : Util::IterateDirectory("res/assets/models/")) {
-            ModelData modelData = File::ImportModel("res/assets/models/" + fileInfo.GetFileNameWithExtension());
-            CreateModelFromData(modelData);
+            texture.CheckForBakeCompletion();
         }
     }
 
     void AddItemToLoadLog(std::string text) {
-        static std::mutex logMutex;
-        std::lock_guard<std::mutex> lock(logMutex);
-        //std::cout << text << "\n";
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lock(mutex);
+        std::cout << text << "\n";
     }
 
-    bool LoadingIsComplete() {
-        return g_loadingComplete;
-    }
+    /*
+    █▄ ▄█ █▀█ █▀▄ █▀▀ █
+    █ █ █ █ █ █ █ █▀▀ █
+    ▀   ▀ ▀▀▀ ▀▀  ▀▀▀ ▀▀▀ */
 
-#include "../API/OpenGL/GL_util.hpp"
+    void LoadModels() {
+        // Scan for new obj and fbx and export custom model format
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/models_raw", { "obj", "fbx" })) {
+            std::string assetPath = "res/models/" + fileInfo.name + ".model";
 
-    void LoadNextItem() {
-        
-        OpenGLBackend::BakeNextAwaitingTexture(g_textures);
-
-        // Are we done yet?
-        bool done = true;
-        for (Texture& texture : g_textures) {
-            if (texture.GetLoadingState() == LoadingState::LOADING_COMPLETE &&
-                texture.GetBakingState() != BakingState::BAKE_COMPLETE) {
-                done = false;
+            // If the file exists but timestamps don't match, re-export
+            if (Util::FileExists(assetPath)) {
+                uint64_t lastModified = File::GetLastModifiedTime(fileInfo.path);
+                ModelHeader modelHeader = File::ReadModelHeader(assetPath);
+                if (modelHeader.timestamp != lastModified) {
+                    File::DeleteFile(assetPath);
+                    ModelData modelData = AssimpImporter::ImportFbx(fileInfo.path);
+                    File::ExportModel(modelData);
+                }
+            }
+            // File doesn't even exist yet, so export it
+            else {
+                ModelData modelData = AssimpImporter::ImportFbx(fileInfo.path);
+                File::ExportModel(modelData);
             }
         }
-        if (done) {
-            std::cout << "All baking complete\n";
-            g_loadingComplete = true;
+        // Find and import all .model files
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/models")) {
+            Model& model = g_models.emplace_back();
+            ModelData modelData = File::ImportModel("res/models/" + fileInfo.GetFileNameWithExtension());
+            LoadModelFromData(model, modelData);
+        }
+
+        // Build index map
+        for (int i = 0; i < g_models.size(); i++) {
+            g_modelIndexMap[g_models[i].GetName()] = i;
         }
     }
+
+    /*
+    █▄ ▄█ █▀▀ █▀▀ █ █
+    █ █ █ █▀▀ ▀▀█ █▀█
+    ▀   ▀ ▀▀▀ ▀▀▀ ▀ ▀ */
+
+    int CreateMesh(const std::string& name, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, glm::vec3 aabbMin, glm::vec3 aabbMax) {
+        OpenGLDetachedMesh& mesh = g_meshes.emplace_back();
+        mesh.SetName(name);
+        mesh.UpdateVertexBuffer(vertices, indices);
+        mesh.aabbMin = aabbMin;
+        mesh.aabbMax = aabbMax;
+        return g_meshes.size() - 1;
+    }
+
+    int CreateMesh(const std::string& name, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
+        glm::vec3 aabbMin = glm::vec3(std::numeric_limits<float>::max());
+        glm::vec3 aabbMax = glm::vec3(-std::numeric_limits<float>::max());
+        for (int i = 0; i < indices.size(); i += 3) {
+            Vertex* vert0 = &vertices[indices[i]];
+            Vertex* vert1 = &vertices[indices[i + 1]];
+            Vertex* vert2 = &vertices[indices[i + 2]];
+            glm::vec3 deltaPos1 = vert1->position - vert0->position;
+            glm::vec3 deltaPos2 = vert2->position - vert0->position;
+            glm::vec2 deltaUV1 = vert1->uv - vert0->uv;
+            glm::vec2 deltaUV2 = vert2->uv - vert0->uv;
+            float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+            glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
+            glm::vec3 bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r;
+            vert0->tangent = tangent;
+            vert1->tangent = tangent;
+            vert2->tangent = tangent;
+            aabbMin = Util::Vec3Min(vert0->position, aabbMin);
+            aabbMax = Util::Vec3Max(vert0->position, aabbMax);
+            aabbMin = Util::Vec3Min(vert1->position, aabbMin);
+            aabbMax = Util::Vec3Max(vert1->position, aabbMax);
+            aabbMin = Util::Vec3Min(vert2->position, aabbMin);
+            aabbMax = Util::Vec3Max(vert2->position, aabbMax);
+        }
+        OpenGLDetachedMesh& mesh = g_meshes.emplace_back();
+        mesh.SetName(name);
+        mesh.UpdateVertexBuffer(vertices, indices);
+        mesh.aabbMin = aabbMin;
+        mesh.aabbMax = aabbMax;
+        return g_meshes.size() - 1;
+    }
+
+    int GetMeshIndexByName(const std::string& name) {
+        for (int i = 0; i < g_meshes.size(); i++) {
+            if (g_meshes[i].GetName() == name)
+                return i;
+        }
+        std::cout << "AssetManager::GetMeshIndexByName() failed because '" << name << "' does not exist\n";
+        return -1;
+    }
+
+    OpenGLDetachedMesh* GetDetachedMeshByName(const std::string& name) {
+        for (int i = 0; i < g_meshes.size(); i++) {
+            if (g_meshes[i].GetName() == name)
+                return &g_meshes[i];
+        }
+        std::cout << "AssetManager::GetDetachedMeshByName() failed because '" << name << "' does not exist\n";
+        return nullptr;
+    }
+
+    OpenGLDetachedMesh* GetMeshByIndex(int index) {
+        if (index >= 0 && index < g_meshes.size()) {
+            return &g_meshes[index];
+        }
+        else {
+            std::cout << "AssetManager::GetMeshByIndex() failed because index '" << index << "' is out of range. Size is " << g_meshes.size() << "!\n";
+            return nullptr;
+        }
+    }
+
+    /*
+     ▀█▀ █▀▀ █ █ ▀█▀ █ █ █▀▄ █▀▀
+      █  █▀▀ ▄▀▄  █  █ █ █▀▄ █▀▀
+      ▀  ▀▀▀ ▀ ▀  ▀  ▀▀▀ ▀ ▀ ▀▀▀ */
 
     void LoadFont() {
         // Find files
-        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/font", { "png", "jpg", })) {
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/load_at_init/font", { "png", "jpg", })) {
             Texture& texture = g_textures.emplace_back();
             texture.SetFileInfo(fileInfo);
             texture.SetImageDataType(ImageDataType::UNCOMPRESSED);
-            texture.SetMipmapState(MipmapState::NO_MIPMAPS_REQUIRED);
+            texture.SetTextureWrapMode(TextureWrapMode::CLAMP_TO_EDGE);
+            texture.SetMinFilter(TextureFilter::NEAREST);
+            texture.SetMagFilter(TextureFilter::NEAREST);
+        }
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/load_at_init/uncompressed", { "png", "jpg", })) {
+            Texture& texture = g_textures.emplace_back();
+            texture.SetFileInfo(fileInfo);
+            texture.SetImageDataType(ImageDataType::UNCOMPRESSED);
+            texture.SetTextureWrapMode(TextureWrapMode::CLAMP_TO_EDGE);
+            texture.SetMinFilter(TextureFilter::LINEAR_MIPMAP);
+            texture.SetMagFilter(TextureFilter::LINEAR);
+            texture.RequestMipmaps();
+        }
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/load_at_init/uncompressed_no_mipmaps", { "png", "jpg", })) {
+            Texture& texture = g_textures.emplace_back();
+            texture.SetFileInfo(fileInfo);
+            texture.SetImageDataType(ImageDataType::UNCOMPRESSED);
+            texture.SetTextureWrapMode(TextureWrapMode::CLAMP_TO_EDGE);
+            texture.SetMinFilter(TextureFilter::NEAREST);
+            texture.SetMagFilter(TextureFilter::NEAREST);
         }
         // Async load them all
+        LoadPendingTexturesAsync();
+
+        // Immediate bake them
+        BakeQueue::ImmediateBakeAllTextures();
+
+        // Build index maps
+        for (int i = 0; i < g_textures.size(); i++) {
+            g_textureIndexMap[g_textures[i].GetFileInfo().name] = i;
+        }
+    }
+
+    void LoadTextures() {
+        // Find file paths
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/uncompressed", { "png", "jpg", "tga" })) {
+            Texture& texture = g_textures.emplace_back();
+            texture.SetFileInfo(fileInfo);
+            texture.SetImageDataType(ImageDataType::UNCOMPRESSED);
+            texture.SetTextureWrapMode(TextureWrapMode::REPEAT);
+            texture.SetMinFilter(TextureFilter::LINEAR_MIPMAP);
+            texture.SetMagFilter(TextureFilter::LINEAR);
+            texture.RequestMipmaps();
+        }
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/compressed", { "dds" })) {
+            Texture& texture = g_textures.emplace_back();
+            texture.SetFileInfo(fileInfo);
+            texture.SetImageDataType(ImageDataType::COMPRESSED);
+            texture.SetTextureWrapMode(TextureWrapMode::REPEAT);
+            texture.SetMinFilter(TextureFilter::LINEAR_MIPMAP);
+            texture.SetMagFilter(TextureFilter::LINEAR);
+            texture.RequestMipmaps();
+        }
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/uncompressed_no_mipmaps", { "png", "jpg", })) {
+            Texture& texture = g_textures.emplace_back();
+            texture.SetFileInfo(fileInfo);
+            texture.SetImageDataType(ImageDataType::UNCOMPRESSED);
+            texture.SetTextureWrapMode(TextureWrapMode::CLAMP_TO_EDGE);
+            texture.SetMinFilter(TextureFilter::NEAREST);
+            texture.SetMagFilter(TextureFilter::NEAREST);
+        }
+        // Async load them all
+        LoadPendingTexturesAsync();
+
+        // Build index maps
+        for (int i = 0; i < g_textures.size(); i++) {
+            g_textureIndexMap[g_textures[i].GetFileInfo().name] = i;
+        }
+    }
+
+    void CompressMissingDDSTexutres() {
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/compress_me", { "png", "jpg", "tga" })) {
+            std::string inputPath = fileInfo.path;
+            std::string outputPath = "res/textures/compressed/" + fileInfo.name + ".dds";
+            if (!Util::FileExists(outputPath)) {
+                ImageTools::CreateAndExportDDS(inputPath, outputPath, true);
+                std::cout << "Exported " << outputPath << "\n";
+            }
+        }
+    }
+
+    void LoadPendingTexturesAsync() {
         std::vector<std::future<void>> futures;
         for (Texture& texture : g_textures) {
             if (texture.GetLoadingState() == LoadingState::AWAITING_LOADING_FROM_DISK) {
@@ -135,104 +264,17 @@ namespace AssetManager {
         for (auto& future : futures) {
             future.get();
         }
-        // Immediate bake them
+        // Allocate gpu memory
         for (Texture& texture : g_textures) {
-            texture.GetGLTexture().PreAllocate();
-            OpenGLBackend::ImmediateBake(texture);
-        }
-        // Update index map
-        for (int i = 0; i < g_textures.size(); i++) {
-            g_textureIndexMap[g_textures[i].GetFileName()] = i;
-        }
-    }
-
-    void LoadTextures() {
-
-        // Generate mip maps
-        //for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/compress_me", { "png", "jpg", "tga" })) {
-        //    if (fileInfo.name != "MermaidTail_ALB" && fileInfo.name != "MermaidTail_NRM" && fileInfo.name != "MermaidTail_RMA") {
-        //        continue;
-        //    }
-        //    stbi_set_flip_vertically_on_load(false);
-        //    TextureData textureData;
-        //    textureData.m_data = stbi_load(fileInfo.path.data(), &textureData.m_width, &textureData.m_height, &textureData.m_numChannels, 0);
-        //    std::string compressedPath = "res/textures/compressed/" + fileInfo.name + ".dds";
-        //    ImageTools::CompresssDXT3WithMipmaps(compressedPath.c_str(), static_cast<unsigned char*>(textureData.m_data), textureData.m_width, textureData.m_height, textureData.m_numChannels);
-        //    stbi_image_free(textureData.m_data);
-        //}
-
-        // Find file paths
-        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/uncompressed", { "png", "jpg", "tga" })) {
-            Texture& texture = g_textures.emplace_back();
-            texture.SetFileInfo(fileInfo);
-            texture.SetImageDataType(ImageDataType::UNCOMPRESSED);
-            texture.SetMipmapState(MipmapState::AWAITING_MIPMAP_GENERATION);
-        }
-        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/ui", { "png", "jpg", "tga" })) {
-            Texture& texture = g_textures.emplace_back();
-            texture.SetFileInfo(fileInfo);
-            texture.SetImageDataType(ImageDataType::UNCOMPRESSED);
-            texture.SetMipmapState(MipmapState::NO_MIPMAPS_REQUIRED);
-        }
-        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/compressed", { "dds" })) {
-            Texture& texture = g_textures.emplace_back();
-            texture.SetFileInfo(fileInfo);
-            texture.SetImageDataType(ImageDataType::COMPRESSED);
-            texture.SetMipmapState(MipmapState::AWAITING_MIPMAP_GENERATION);
-        }
-        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/exr", { "exr" })) {
-            Texture& texture = g_textures.emplace_back();
-            texture.SetFileInfo(fileInfo);
-            texture.SetImageDataType(ImageDataType::EXR);
-            texture.SetMipmapState(MipmapState::NO_MIPMAPS_REQUIRED);
-        }
-        // Build index maps
-        for (int i = 0; i < g_textures.size(); i++) {
-            g_textureIndexMap[g_textures[i].GetFileInfo().name] = i;
-        }
-
-        // Async load them all
-        std::vector<std::future<void>> futures;   
-        for (Texture& texture : g_textures) {
-            if (texture.GetLoadingState() == LoadingState::AWAITING_LOADING_FROM_DISK) {
-                texture.SetLoadingState(LoadingState::LOADING_FROM_DISK);
-                futures.emplace_back(std::async(std::launch::async, LoadTexture, &texture));
-                AddItemToLoadLog("Loaded " + texture.GetFilePath());
-            }
-        }
-        for (auto& future : futures) {
-            future.get();
-        }
-        futures.clear();
-
-        // Preallocate space on the gpu
-        for (Texture& texture : g_textures) {
-            texture.GetGLTexture().PreAllocate();
-        }
-
-        // Immediate bake exr and UI
-        for (Texture& texture : g_textures) {
-            if (texture.GetImageDataType() == ImageDataType::EXR) {
-                //OpenGLBackend::ImmediateBake(texture);
-            }
-        }
-    }
-       
-    void Init() {
-        LoadCustomFileFormats();
-        Hardcoded::LoadHardcodedRoomModel();
-        Hardcoded::LoadHardcodedWaterModel();
-        Hardcoded::LoadQuadModel();
-        LoadFont();
-        LoadTextures();
-        BuildMaterials();
-        for (int i = 0; i < g_models.size(); i++) {
-            g_modelIndexMap[g_models[i].GetName()] = i;
+            OpenGLBackend::AllocateTextureMemory(texture);
         }
     }
 
     void LoadTexture(Texture* texture) {
-        texture->Load();
+        if (texture) {
+            texture->Load();
+            BakeQueue::QueueTextureForBaking(texture);
+        }
     }
 
     Texture* GetTextureByName(const std::string& name) {
@@ -267,6 +309,48 @@ namespace AssetManager {
         return g_textures.size();
     }
 
+    /*
+    █▄ ▄█ █▀█ ▀█▀ █▀▀ █▀▄ ▀█▀ █▀█ █
+    █ █ █ █▀█  █  █▀▀ █▀▄  █  █▀█ █
+    ▀   ▀ ▀ ▀  ▀  ▀▀▀ ▀ ▀ ▀▀▀ ▀ ▀ ▀▀▀ */
+
+    bool FileInfoIsAlbedoTexture(const FileInfo& fileInfo) {
+        if (fileInfo.name.size() >= 4 && fileInfo.name.substr(fileInfo.name.size() - 4) == "_ALB") {
+            return true;
+        }
+        return false;
+    }
+
+    std::string GetMaterialNameFromFileInfo(const FileInfo& fileInfo) {
+        const std::string suffix = "_ALB";
+        if (fileInfo.name.size() > suffix.size() && fileInfo.name.substr(fileInfo.name.size() - suffix.size()) == suffix) {
+            return fileInfo.name.substr(0, fileInfo.name.size() - suffix.size());
+        }
+        return "";
+    }
+
+    void BuildMaterials() {
+        for (Texture& texture : g_textures) {
+            if (FileInfoIsAlbedoTexture(texture.GetFileInfo())) {
+                Material& material = g_materials.emplace_back(Material());
+                material.m_name = GetMaterialNameFromFileInfo(texture.GetFileInfo());
+                int basecolorIndex = GetTextureIndexByName(material.m_name + "_ALB", true);
+                int normalIndex = GetTextureIndexByName(material.m_name + "_NRM", true);
+                int rmaIndex = GetTextureIndexByName(material.m_name + "_RMA", true);
+                int sssIndex = GetTextureIndexByName(material.m_name + "_SSS", true);
+                material.m_basecolor = (basecolorIndex != -1) ? basecolorIndex : GetTextureIndexByName("Empty_NRMRMA");
+                material.m_normal = (normalIndex != -1) ? normalIndex : GetTextureIndexByName("DefaultNRM");
+                material.m_rma = (rmaIndex != -1) ? rmaIndex : GetTextureIndexByName("DefaultRMA");
+            }
+        }
+        // Build index maps
+        for (int i = 0; i < g_materials.size(); i++) {
+            g_materialIndexMap[g_materials[i].m_name] = i;
+        }
+    }
+
+    
+
     Model* GetModelByIndex(int index) {
         if (index != -1) {
             return &g_models[index];
@@ -282,12 +366,11 @@ namespace AssetManager {
         return model;
     }
 
-    void CreateModelFromData(ModelData& modelData) {
-        Model& model = g_models.emplace_back();
+    void LoadModelFromData(Model& model, ModelData& modelData) {
         model.SetName(modelData.name);
         model.SetAABB(modelData.aabbMin, modelData.aabbMax);
         for (MeshData& meshData : modelData.meshes) {
-            int meshIndex = MeshManager::CreateMesh(meshData.name, meshData.vertices, meshData.indices, meshData.aabbMin, meshData.aabbMax);
+            int meshIndex = CreateMesh(meshData.name, meshData.vertices, meshData.indices, meshData.aabbMin, meshData.aabbMax);
             model.AddMeshIndex(meshIndex);
         }
     }
@@ -301,14 +384,31 @@ namespace AssetManager {
         return -1;
     }
 
-    Material* GetMaterialByIndex(int index) {
-        if (index >= 0 && index < g_materials.size()) {
-            return &g_materials[index];
-        }
-        std::cout << "AssetManager::GetMaterialByIndex() failed because index '" << index << "' is out of range. Size is " << g_materials.size() << "!\n";
-        return nullptr;
+    Material* GetDefaultMaterial() {
+        int index = GetMaterialIndex("CheckerBoard");
+        return GetMaterialByIndex(index);
     }
 
+    Material* GetMaterialByIndex(int index) {
+        if (index >= 0 && index < g_materials.size()) {
+            Material* material = &g_materials[index];
+            Texture* baseColor = AssetManager::GetTextureByIndex(material->m_basecolor);
+            Texture* normal = AssetManager::GetTextureByIndex(material->m_normal);
+            Texture* rma = AssetManager::GetTextureByIndex(material->m_rma);
+            if (baseColor && baseColor->BakeComplete() && 
+                normal && normal->BakeComplete() && 
+                rma && rma->BakeComplete()) {
+                return &g_materials[index]; 
+            }
+            else {
+                return GetDefaultMaterial();
+            }
+        }
+        else {
+            //std::cout << "AssetManager::GetMaterialByIndex() failed because index '" << index << "' is out of range. Size is " << g_materials.size() << "!\n";
+            return GetDefaultMaterial();
+        }
+    }
 
     int GetMaterialIndex(const std::string& name) {
         auto it = g_materialIndexMap.find(name);

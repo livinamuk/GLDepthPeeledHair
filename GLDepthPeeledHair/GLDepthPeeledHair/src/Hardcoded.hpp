@@ -1,6 +1,5 @@
 #pragma once
 #include "Managers/AssetManager.h"
-#include "Managers/MeshManager.hpp"
 
 namespace Hardcoded {
 
@@ -38,7 +37,7 @@ namespace Hardcoded {
         vertices.push_back(Vertex(glm::vec3(1.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f)));
         vertices.push_back(Vertex(glm::vec3(1.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f)));
         std::vector<uint32_t> indices = { 2, 1, 0, 3, 2, 0 };
-        model->AddMeshIndex(MeshManager::CreateMesh("FlipBookQuadCentered", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("FlipBookQuadCentered", vertices, indices));
 
         vertices.clear();
         vertices.push_back(Vertex(glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 1.0f)));
@@ -46,7 +45,7 @@ namespace Hardcoded {
         vertices.push_back(Vertex(glm::vec3(1.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f)));
         vertices.push_back(Vertex(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f)));
         indices = { 2, 1, 0, 3, 2, 0 };
-        model->AddMeshIndex(MeshManager::CreateMesh("FlipBookQuadBottomAligned", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("FlipBookQuadBottomAligned", vertices, indices));
     }
 
     inline void LoadHardcodedWaterModel() {
@@ -62,7 +61,7 @@ namespace Hardcoded {
         vertices.push_back(Vertex(bottomBackLeft + glm::vec3(0, waterHeight, 0), down, glm::vec2(0, roomDepth)));
         vertices.push_back(Vertex(bottomBackRight + glm::vec3(0, waterHeight, 0), down, glm::vec2(roomWidth, roomDepth)));
         indices = { 0, 2, 1, 2, 3, 1, 0 + 4, 1 + 4, 2 + 4, 2 + 4, 1 + 4, 3 + 4 };
-        model->AddMeshIndex(MeshManager::CreateMesh("Water", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("Water", vertices, indices));
     }
 
     inline void LoadHardcodedRoomModel() {
@@ -79,7 +78,7 @@ namespace Hardcoded {
             vertices[i].uv = glm::vec2(vertices[i].position.x, vertices[i].position.y);
         }
         indices = { 0, 1, 2, 2, 1, 3 };
-        model->AddMeshIndex(MeshManager::CreateMesh("PlatformSide", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("PlatformSide", vertices, indices));
         // Platform Top
         vertices = {};
         vertices.push_back(Vertex(platformTopFrontLeft, up));
@@ -90,7 +89,7 @@ namespace Hardcoded {
             vertices[i].uv = glm::vec2(vertices[i].position.x, vertices[i].position.z);
         }
         indices = { 0, 1, 2, 2, 1, 3 };
-        model->AddMeshIndex(MeshManager::CreateMesh("PlatformTop", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("PlatformTop", vertices, indices));
         // Floor
         vertices = {};
         vertices.push_back(Vertex(bottomFrontLeft, up, glm::vec2(0, 0)));
@@ -98,7 +97,7 @@ namespace Hardcoded {
         vertices.push_back(Vertex(bottomBackLeft, up, glm::vec2(0, roomDepth)));
         vertices.push_back(Vertex(bottomBackRight, up, glm::vec2(roomWidth, roomDepth)));
         indices = { 0, 2, 1, 2, 3, 1 };
-        model->AddMeshIndex(MeshManager::CreateMesh("Floor", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("Floor", vertices, indices));
         // Ceiling
         vertices = {};
         vertices.push_back(Vertex(topFrontLeft, down, glm::vec2(0, 0)));
@@ -106,7 +105,7 @@ namespace Hardcoded {
         vertices.push_back(Vertex(topBackLeft, down, glm::vec2(0, roomDepth)));
         vertices.push_back(Vertex(topBackRight, down, glm::vec2(roomWidth, roomDepth)));
         indices = { 0, 1, 2, 2, 1, 3 };
-        model->AddMeshIndex(MeshManager::CreateMesh("Ceiling", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("Ceiling", vertices, indices));
         // Z Pos
         vertices = {};
         vertices.push_back(Vertex(bottomFrontLeft, zPos, glm::vec2(0, 0)));
@@ -114,7 +113,7 @@ namespace Hardcoded {
         vertices.push_back(Vertex(topFrontLeft, zPos, glm::vec2(0, -1)));
         vertices.push_back(Vertex(topFrontRight, zPos, glm::vec2(roomWidth / roomHeight, -1)));
         indices = { 0, 1, 2, 2, 1, 3 };
-        model->AddMeshIndex(MeshManager::CreateMesh("WallZPos", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("WallZPos", vertices, indices));
         // Z Neg
         vertices = {};
         vertices.push_back(Vertex(bottomBackLeft, zNeg, glm::vec2(0, 0)));
@@ -122,7 +121,7 @@ namespace Hardcoded {
         vertices.push_back(Vertex(topBackLeft, zNeg, glm::vec2(0, -1)));
         vertices.push_back(Vertex(topBackRight, zNeg, glm::vec2(roomWidth / roomHeight, -1)));
         indices = { 0, 2, 1, 2, 3, 1 };
-        model->AddMeshIndex(MeshManager::CreateMesh("WallZNeg", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("WallZNeg", vertices, indices));
         // X Pos
         vertices = {};
         vertices.push_back(Vertex(bottomFrontRight, xPos, glm::vec2(0, 0)));
@@ -130,7 +129,7 @@ namespace Hardcoded {
         vertices.push_back(Vertex(topFrontRight, xPos, glm::vec2(0, -1)));
         vertices.push_back(Vertex(topBackRight, xPos, glm::vec2(roomDepth / roomHeight, -1)));
         indices = { 0, 1, 2, 2, 1, 3 };
-        model->AddMeshIndex(MeshManager::CreateMesh("WallXPos", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("WallXPos", vertices, indices));
         // X Neg
         vertices = {};
         vertices.push_back(Vertex(bottomFrontLeft, xNeg, glm::vec2(0, 0)));
@@ -138,6 +137,6 @@ namespace Hardcoded {
         vertices.push_back(Vertex(topFrontLeft, xNeg, glm::vec2(0, -1)));
         vertices.push_back(Vertex(topBackLeft, xNeg, glm::vec2(roomDepth / roomHeight, -1)));
         indices = { 0, 2, 1, 2, 3, 1 };
-        model->AddMeshIndex(MeshManager::CreateMesh("WallXNeg", vertices, indices));
+        model->AddMeshIndex(AssetManager::CreateMesh("WallXNeg", vertices, indices));
     }
 }

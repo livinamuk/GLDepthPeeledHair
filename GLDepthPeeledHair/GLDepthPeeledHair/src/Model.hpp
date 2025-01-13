@@ -9,11 +9,11 @@ private:
     std::string m_name = "undefined";
     std::vector<uint32_t> m_meshIndices;
 public:
-    glm::vec3 m_aabbMin;
-    glm::vec3 m_aabbMax;
+    glm::vec3 m_aabbMin = glm::vec3(std::numeric_limits<float>::max());
+    glm::vec3 m_aabbMax = glm::vec3(-std::numeric_limits<float>::max());
     bool m_awaitingLoadingFromDisk = true;
     bool m_loadedFromDisk = false;
-    std::string m_fullPath = "";
+    std::string m_fullPath = ""; 
 
 public:
 

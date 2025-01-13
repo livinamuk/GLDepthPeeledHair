@@ -4,7 +4,6 @@ layout (location = 0) out vec4 FragOut;
 layout (binding = 0) uniform sampler2D baseColorTexture;
 layout (binding = 1) uniform sampler2D normalTexture;
 layout (binding = 2) uniform sampler2D rmaTexture;
-layout (binding = 3) uniform sampler2D sssTexture;
 
 in vec2 TexCoord;
 in vec3 Normal;
@@ -112,7 +111,6 @@ void main() {
     vec4 baseColor = texture2D(baseColorTexture, TexCoord);
     vec3 normalMap = texture2D(normalTexture, TexCoord).rgb;
     vec3 rma = texture2D(rmaTexture, TexCoord).rgb;
-    float subsurfaceStrength = texture(sssTexture, TexCoord).r;
 	baseColor.rgb = pow(baseColor.rgb, vec3(2.2));
 
 	mat3 tbn = mat3(Tangent, BiTangent, Normal);
@@ -177,33 +175,16 @@ void main() {
         finalAlpha = clamp(finalAlpha, 0, 1);
     }
 
+   // finalColor = baseColor.rgb;
+
     finalColor.rgb = finalColor.rgb * finalAlpha;
     FragOut = vec4(finalColor, finalAlpha);
     //FragOut = vec4(baseColor.rgb, finalAlpha);
 
+    // FragOut = vec4(baseColor.rgb, 1.0);
     
     if (!isHair) {    
-       //FragOut = vec4((WorldPos.rgb * 0.2) - baseColor.rgb, finalAlpha);
-       //FragOut = vec4(baseColor.rgb, finalAlpha);
-       
-//        subsurfaceStrength = 0.5; // Uniform scattering
-
-        float radius = 0.2;
-        vec3 subsurfaceTint = vec3(1.0, 0.5, 0.4); 
-        vec3 subsurfaceColor = mix(baseColor.rgb, subsurfaceTint, 0.5);
-
-        vec3 lightDir = normalize(lightPosition - WorldPos);
-        vec3 viewDir = normalize(viewPos - WorldPos);
-        float NdotL = max(dot(normal, lightDir), 0.0);
-
-float scattering = pow(1.0 - NdotL, 3.0) / (radius + 0.001);
-//float scattering = 0.2 * pow(1.0 - NdotL, 3.0 / (radius + 0.001));
-
-vec3 sssColor = subsurfaceColor * scattering * 0.5; // Scale intensity
-
-        //vec3 sssColor = subsurfaceStrength * subsurfaceColor * scattering;
-        
-        //FragOut.rgb = mix(FragOut.rgb, sssColor, subsurfaceStrength);
-        //FragOut = vec4(vec3(sssColor + FragOut.rgb), finalAlpha);
+       //FragOut = vec4((WorldPos.rgb * 0.1) + baseColor.rgb, finalAlpha);
+       //FragOut = vec4((WorldPos.rgb * 0.2) + baseColor.rgb, finalAlpha);
     }
 }

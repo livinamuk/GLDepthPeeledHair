@@ -76,7 +76,7 @@ namespace OpenGLUtil {
         }
     }
 
-    inline uint32_t CMPFormatToGLInternalFromat(CMP_FORMAT format) {
+    inline uint32_t CMPFormatToGLInternalFormat(CMP_FORMAT format) {
         switch (format) {
         case CMP_FORMAT_DXT1:
             return GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
@@ -453,4 +453,33 @@ namespace OpenGLUtil {
         int blocksHigh = std::max(1, (height + 3) / 4);
         return blocksWide * blocksHigh * blockSize;
     }
+
+    inline GLint TextureWrapModeToGLEnum(TextureWrapMode wrapMode) {
+        switch (wrapMode) {
+        case TextureWrapMode::REPEAT:
+            return GL_REPEAT;
+        case TextureWrapMode::MIRRORED_REPEAT:
+            return GL_MIRRORED_REPEAT;
+        case TextureWrapMode::CLAMP_TO_EDGE:
+            return GL_CLAMP_TO_EDGE;
+        case TextureWrapMode::CLAMP_TO_BORDER:
+            return GL_CLAMP_TO_BORDER;
+        default:
+            return GL_NONE;
+        }
+    }
+
+    inline GLint TextureFilterToGLEnum(TextureFilter filter) {
+        switch (filter) {
+        case TextureFilter::NEAREST:
+            return GL_NEAREST;
+        case TextureFilter::LINEAR:
+            return GL_LINEAR;
+        case TextureFilter::LINEAR_MIPMAP:
+            return GL_LINEAR_MIPMAP_LINEAR;
+        default:
+            return GL_NONE;
+        }
+    }
+
 }
