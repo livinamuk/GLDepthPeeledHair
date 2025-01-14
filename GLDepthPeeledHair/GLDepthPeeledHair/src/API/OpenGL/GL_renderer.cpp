@@ -14,15 +14,15 @@
 #include "../Hardcoded.hpp"
 #include "../GameObject.h"
 #include "../Audio.h"
+#include "../TextBlitting/TextBlitter.h"
 
 namespace OpenGLRenderer {
 
     struct Shaders {
         Shader solidColor;
         Shader lighting;
-        Shader water;
         Shader hairDepthPeel;
-        ComputeShader computeTest;
+        Shader textBlitter;
         ComputeShader hairfinalComposite;
         ComputeShader hairLayerComposite;
     } g_shaders;
@@ -44,6 +44,7 @@ namespace OpenGLRenderer {
     void RenderHair();
     void GenerateMipmaps(OpenGLTexture& glTexture); 
     void RenderHairLayer(std::vector<RenderItem>& renderItems, int peelCount);
+    void RenderText();
 
     void Init() {
         g_frameBuffers.main.Create("Main", 1920, 1080);
@@ -85,6 +86,8 @@ namespace OpenGLRenderer {
         glBindTexture(GL_TEXTURE_2D, mainFrameBuffer.GetColorAttachmentHandleByName("Color"));
         glBindImageTexture(0, mainFrameBuffer.GetColorAttachmentHandleByName("Color"), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8);
         glDispatchCompute((g_frameBuffers.main.GetWidth() + 7) / 8, (g_frameBuffers.main.GetHeight() + 7) / 8, 1);
+
+        RenderText();
 
         g_frameBuffers.main.BlitToDefaultFrameBuffer("Color", 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
@@ -206,6 +209,9 @@ namespace OpenGLRenderer {
 
 
     void RenderHair() {
+        GLFrameBuffer& mainFrameBuffer = g_frameBuffers.main;
+        GLFrameBuffer& hairFrameBuffer = g_frameBuffers.hair;
+
         static int peelCount = 3;
         if (Input::KeyPressed(HELL_KEY_E) && peelCount < 7) {
             Audio::PlayAudio("UI_Select.wav", 1.0f);
@@ -217,6 +223,14 @@ namespace OpenGLRenderer {
             peelCount--;
             std::cout << "Depth peel layer count: " << peelCount << "\n";
         }
+        // Blit debug text
+        int viewportWidth = mainFrameBuffer.GetWidth();
+        int viewportHeight = mainFrameBuffer.GetHeight();
+        int locationX = 0;
+        int locationY = 0;
+        float scale = 2.5f;
+        std::string text = "Peel count: " + std::to_string(peelCount);
+        TextBlitter::BlitText(text, "StandardFont", locationX, locationY, viewportWidth, viewportHeight, scale);
 
         // Setup state
         Shader* shader = &g_shaders.lighting;
@@ -265,10 +279,6 @@ namespace OpenGLRenderer {
             }
         }
         RenderHairLayer(renderItems, peelCount);
-
-
-        GLFrameBuffer& mainFrameBuffer = g_frameBuffers.main;
-        GLFrameBuffer& hairFrameBuffer = g_frameBuffers.hair;
 
         g_shaders.hairfinalComposite.Use();
         glActiveTexture(GL_TEXTURE0);
@@ -374,11 +384,25 @@ namespace OpenGLRenderer {
         }
     }
 
-    void GenerateMipmaps(OpenGLTexture& glTexture) {
-        return;
-        glBindTexture(GL_TEXTURE_2D, glTexture.GetHandle());
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, 0);
+    void RenderText() {
+        GLFrameBuffer& mainFrameBuffer = g_frameBuffers.main;
+        mainFrameBuffer.Bind();
+        mainFrameBuffer.SetViewport();
+
+        Shader& shader = g_shaders.textBlitter;
+        shader.Use();
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        OpenGLFontMesh* fontMesh = TextBlitter::GetGLFontMesh("StandardFont");
+        if (fontMesh) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByName("StandardFont")->GetGLTexture().GetHandle());
+            glBindVertexArray(fontMesh->GetVAO());
+            glDrawElements(GL_TRIANGLES, fontMesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
+        }
+        // Cleanup
+        glDisable(GL_BLEND);
     }
 
     void LoadShaders() {
@@ -387,5 +411,6 @@ namespace OpenGLRenderer {
         g_shaders.solidColor.Load("gl_solid_color.vert", "gl_solid_color.frag");
         g_shaders.hairDepthPeel.Load("gl_hair_depth_peel.vert", "gl_hair_depth_peel.frag");
         g_shaders.lighting.Load("gl_lighting.vert", "gl_lighting.frag");
+        g_shaders.textBlitter.Load("gl_text_blitter.vert", "gl_text_blitter.frag");
     }
 }

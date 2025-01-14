@@ -18,9 +18,9 @@ namespace AssetManager {
     std::unordered_map<std::string, int> g_materialIndexMap;
     std::unordered_map<std::string, int> g_modelIndexMap;
 
-    void LoadFont();
-    void LoadModels();
-    void LoadTextures();
+    void LoadMinimum();
+    void LoadModelsAsync();
+    void LoadTexturesAsync();
     void LoadTexture(Texture* texture);
     void BuildMaterials();
     void LoadPendingTexturesAsync();
@@ -30,9 +30,9 @@ namespace AssetManager {
 
     void Init() {
         CompressMissingDDSTexutres();
-        LoadFont();
-        LoadModels();
-        LoadTextures();
+        LoadMinimum();
+        LoadModelsAsync();
+        LoadTexturesAsync();
         BuildMaterials();
     }
 
@@ -53,7 +53,7 @@ namespace AssetManager {
     █ █ █ █ █ █ █ █▀▀ █
     ▀   ▀ ▀▀▀ ▀▀  ▀▀▀ ▀▀▀ */
 
-    void LoadModels() {
+    void LoadModelsAsync() {
         // Scan for new obj and fbx and export custom model format
         for (FileInfo& fileInfo : Util::IterateDirectory("res/models_raw", { "obj", "fbx" })) {
             std::string assetPath = "res/models/" + fileInfo.name + ".model";
@@ -166,9 +166,9 @@ namespace AssetManager {
       █  █▀▀ ▄▀▄  █  █ █ █▀▄ █▀▀
       ▀  ▀▀▀ ▀ ▀  ▀  ▀▀▀ ▀ ▀ ▀▀▀ */
 
-    void LoadFont() {
+    void LoadMinimum() {
         // Find files
-        for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/load_at_init/font", { "png", "jpg", })) {
+        for (FileInfo& fileInfo : Util::IterateDirectory("res/fonts", { "png" })) {
             Texture& texture = g_textures.emplace_back();
             texture.SetFileInfo(fileInfo);
             texture.SetImageDataType(ImageDataType::UNCOMPRESSED);
@@ -205,7 +205,7 @@ namespace AssetManager {
         }
     }
 
-    void LoadTextures() {
+    void LoadTexturesAsync() {
         // Find file paths
         for (FileInfo& fileInfo : Util::IterateDirectory("res/textures/uncompressed", { "png", "jpg", "tga" })) {
             Texture& texture = g_textures.emplace_back();
@@ -330,6 +330,7 @@ namespace AssetManager {
     }
 
     void BuildMaterials() {
+        g_materials.clear();
         for (Texture& texture : g_textures) {
             if (FileInfoIsAlbedoTexture(texture.GetFileInfo())) {
                 Material& material = g_materials.emplace_back(Material());
@@ -337,8 +338,7 @@ namespace AssetManager {
                 int basecolorIndex = GetTextureIndexByName(material.m_name + "_ALB", true);
                 int normalIndex = GetTextureIndexByName(material.m_name + "_NRM", true);
                 int rmaIndex = GetTextureIndexByName(material.m_name + "_RMA", true);
-                int sssIndex = GetTextureIndexByName(material.m_name + "_SSS", true);
-                material.m_basecolor = (basecolorIndex != -1) ? basecolorIndex : GetTextureIndexByName("Empty_NRMRMA");
+                material.m_basecolor = basecolorIndex;
                 material.m_normal = (normalIndex != -1) ? normalIndex : GetTextureIndexByName("DefaultNRM");
                 material.m_rma = (rmaIndex != -1) ? rmaIndex : GetTextureIndexByName("DefaultRMA");
             }

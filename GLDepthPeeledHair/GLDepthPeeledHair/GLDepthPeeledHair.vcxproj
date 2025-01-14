@@ -25,6 +25,8 @@
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\Managers\AssetManager.cpp" />
+    <ClCompile Include="src\TextBlitting\FontSpriteSheet.cpp" />
+    <ClCompile Include="src\TextBlitting\TextBlitter.cpp" />
     <ClCompile Include="src\Texture.cpp" />
     <ClCompile Include="src\Tools\ImageTools.cpp" />
     <ClCompile Include="vendor\glad\src\glad.c" />
@@ -38,6 +40,8 @@
     <None Include="res\shaders\gl_hair_layer_composite.comp" />
     <None Include="res\shaders\gl_solid_color.frag" />
     <None Include="res\shaders\gl_solid_color.vert" />
+    <None Include="res\shaders\gl_text_blitter.frag" />
+    <None Include="res\shaders\gl_text_blitter.vert" />
     <None Include="res\shaders\terrain.frag" />
     <None Include="res\shaders\terrain.vert" />
     <None Include="res\shaders\skybox.frag" />
@@ -50,6 +54,7 @@
     <ClInclude Include="src\API\OpenGL\GL_renderer.h" />
     <ClInclude Include="src\API\OpenGL\GL_util.hpp" />
     <ClInclude Include="src\API\OpenGL\Types\GL_detachedMesh.hpp" />
+    <ClInclude Include="src\API\OpenGL\Types\GL_fontMesh.hpp" />
     <ClInclude Include="src\API\OpenGL\Types\GL_frameBuffer.hpp" />
     <ClInclude Include="src\API\OpenGL\Types\GL_pbo.hpp" />
     <ClInclude Include="src\API\OpenGL\Types\GL_shader.h" />
@@ -78,6 +83,8 @@
     <ClInclude Include="src\learnopengl\mesh.h" />
     <ClInclude Include="src\learnopengl\model.h" />
     <ClInclude Include="src\learnopengl\model_animation.h" />
+    <ClInclude Include="src\TextBlitting\FontSpriteSheet.h" />
+    <ClInclude Include="src\TextBlitting\TextBlitter.h" />
     <ClInclude Include="src\Tools\DDS.h" />
     <ClInclude Include="src\Model.hpp" />
     <ClInclude Include="src\Scene.hpp" />
@@ -86,6 +93,7 @@
     <ClInclude Include="src\HeightMap.hpp" />
     <ClInclude Include="src\Texture.h" />
     <ClInclude Include="src\Common\Types.h" />
+    <ClInclude Include="vendor\stb_image\stb_image.h" />
     <ClInclude Include="vendor\stb_image\stb_image_write.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -145,7 +153,9 @@
       <AdditionalDependencies>glfw3.lib;fmod_vc.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)vendor\DLLs\fmod.dll" "$(TargetDir)fmod.dll"</Command>
+      <Command>copy /Y "$(ProjectDir)vendor\DLLs\fmod.dll" "$(TargetDir)fmod.dll"
+copy /Y "$(ProjectDir)vendor\DLLs\assimp-vc143-mt.dll" "$(TargetDir)assimp-vc143-mt.dll"
+xcopy "$(ProjectDir)res\shaders" "$(TargetDir)res\shaders" /e /y /i /r</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -169,7 +179,7 @@
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)vendor\DLLs\fmod.dll" "$(TargetDir)fmod.dll"
-copy /Y "$(ProjectDir)vendor\DLLs\assimp-vc143-mt.dll" "$(TargetDir)assimp-vc143-mt.dll"copy /Y "$(ProjectDir)vendor\DLLs\assimp-vc143-mt.dll" "$(TargetDir)assimp-vc143-mt.dll"
+copy /Y "$(ProjectDir)vendor\DLLs\assimp-vc143-mt.dll" "$(TargetDir)assimp-vc143-mt.dll"
 xcopy "$(ProjectDir)res\shaders" "$(TargetDir)res\shaders" /e /y /i /r</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>

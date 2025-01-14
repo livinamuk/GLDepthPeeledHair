@@ -1,6 +1,7 @@
 #pragma once
 #include "Common.h"
 #include <random>
+#include <regex>
 
 namespace Util {
 
@@ -140,10 +141,9 @@ namespace Util {
     }
 
     inline std::vector<FileInfo> IterateDirectory(const std::string& directory, std::vector<std::string> extensions = std::vector<std::string>()) {
-        std::vector<FileInfo> fileInfos;
+        std::vector<FileInfo> fileInfoList;
         auto entries = std::filesystem::directory_iterator(directory);
         for (const auto& entry : entries) {
-            // Skip directories
             if (!std::filesystem::is_regular_file(entry)) {
                 continue;
             }
@@ -153,18 +153,60 @@ namespace Util {
             fileInfo.ext = Util::GetFileExtension(entry);
             fileInfo.dir = directory;
             if (extensions.empty()) {
-                fileInfos.push_back(fileInfo);
+                fileInfoList.push_back(fileInfo);
             }
             else {
                 for (std::string& ext : extensions) {
                     if (ext == fileInfo.ext) {
-                        fileInfos.push_back(fileInfo);
+                        fileInfoList.push_back(fileInfo);
                         break;
                     }
                 }
             }
         }
-        return fileInfos;
+        return fileInfoList;
+    }
+
+    inline std::vector<FileInfo> IterateDirectorySorted(const std::string& directory, std::vector<std::string> extensions = std::vector<std::string>()) {
+        std::vector<FileInfo> fileInfoList;
+        auto entries = std::filesystem::directory_iterator(directory);
+        for (const auto& entry : entries) {
+            if (!std::filesystem::is_regular_file(entry)) {
+                continue;
+            }
+            FileInfo fileInfo;
+            fileInfo.path = Util::GetFullPath(entry);
+            fileInfo.name = Util::GetFileNameWithoutExtension(entry);
+            fileInfo.ext = Util::GetFileExtension(entry);
+            fileInfo.dir = directory;
+            if (extensions.empty()) {
+                fileInfoList.push_back(fileInfo);
+            }
+            else {
+                for (std::string& ext : extensions) {
+                    if (ext == fileInfo.ext) {
+                        fileInfoList.push_back(fileInfo);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Sort the fileInfoList numerically by filename
+        std::sort(fileInfoList.begin(), fileInfoList.end(), [](const FileInfo& a, const FileInfo& b) {
+            std::regex numberRegex("(\\d+)"); // Regex to extract numbers
+            std::smatch matchA, matchB;
+            bool foundA = std::regex_search(a.name, matchA, numberRegex);
+            bool foundB = std::regex_search(b.name, matchB, numberRegex);
+            if (foundA && foundB) {
+                int numA = std::stoi(matchA.str());
+                int numB = std::stoi(matchB.str());
+                if (numA != numB) return numA < numB; // Compare numbers if found
+            }
+            return a.name < b.name; // Fall back to lexicographic order
+        });
+
+        return fileInfoList;
     }
 
     inline FileInfo GetFileInfoFromPath(const std::string& filepath) {
@@ -199,5 +241,14 @@ namespace Util {
         result += std::format("{:.2f}", m[0][2]) + ", " + std::format("{:.2f}", m[1][2]) + ", " + std::format("{:.2f}", m[2][2]) + ", " + std::format("{:.2f}", m[3][2]) + "\n";
         result += std::format("{:.2f}", m[0][3]) + ", " + std::format("{:.2f}", m[1][3]) + ", " + std::format("{:.2f}", m[2][3]) + ", " + std::format("{:.2f}", m[3][3]);
         return result;
+    }
+
+    inline int CeilSqrt(int number) {
+        if (number <= 0) {
+            return 0;
+        }
+        else {
+            return static_cast<int>(std::ceil(std::sqrt(number)));
+        }
     }
 }

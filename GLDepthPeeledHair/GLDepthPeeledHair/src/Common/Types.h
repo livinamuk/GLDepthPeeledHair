@@ -6,6 +6,12 @@
 #include <iostream>
 #include "Enums.h"
 
+struct FontVertex {
+    glm::vec2 position;
+    glm::vec2 uv;
+    glm::vec3 color;
+};
+
 struct Vertex {
     Vertex() = default;
     Vertex(glm::vec3 pos) {

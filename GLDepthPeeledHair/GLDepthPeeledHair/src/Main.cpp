@@ -10,10 +10,12 @@
 #include "Tools/ImageTools.h"
 #include "API/OpenGL/GL_backend.h"
 #include "API/OpenGL/GL_renderer.h"
+#include "TextBlitting/Textblitter.h"
 
 void Init(int width, int height, std::string title) {
     OpenGLBackend::Init(width, height, title);
-    AssetManager::Init(); 
+    AssetManager::Init();
+    TextBlitter::Init();
     Audio::Init();
     Scene::Init();
     Input::Init(OpenGLBackend::GetWindowPtr());
@@ -31,6 +33,7 @@ void Update() {
     OpenGLBackend::UpdateTextureBaking();
     Scene::SetMaterials();
     AssetManager::Update();
+    TextBlitter::Update();
     Input::Update();
     Camera::Update(deltaTime);
     Audio::Update();
