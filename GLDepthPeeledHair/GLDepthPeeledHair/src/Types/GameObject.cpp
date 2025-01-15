@@ -1,5 +1,5 @@
 #include "GameObject.h"
-#include "Managers/AssetManager.h"
+#include "../AssetManagement/AssetManager.h"
 
 void GameObject::SetPosition(glm::vec3 position) {
     m_transform.position = position;

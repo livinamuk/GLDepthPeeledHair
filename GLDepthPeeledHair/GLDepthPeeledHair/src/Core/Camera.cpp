@@ -1,5 +1,5 @@
 #include "Camera.h"
-#include "Input.h"
+#include "../Input/Input.h"
 
 #define NEAR_PLANE 0.01f
 #define FAR_PLANE 5000.0f

@@ -1,12 +1,12 @@
 #pragma once
 #include "GL_backend.h"
+#include "../AssetManagement/BakeQueue.h"
+#include "../AssetManagement/AssetManager.h"
 #include <string>
 #include <iostream>
 #include <vector>
-#include "GL_util.hpp"
 #include "Types.h"
-#include "../../BakeQueue.h"
-#include "../../Managers/AssetManager.h"
+#include "GL_util.hpp"
 
 namespace OpenGLBackend {
 

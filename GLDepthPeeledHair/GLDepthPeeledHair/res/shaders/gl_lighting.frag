@@ -136,55 +136,37 @@ void main() {
     vec3 ambientColor = baseColor.rgb * lightColor;
     vec3 ambientLighting = ambientColor * ambientIntensity;
 
-    float finalAlpha = 1.0;
-    finalAlpha = baseColor.a;
+    float finalAlpha = baseColor.a;
     
     vec3 finalColor = directLighting.rgb + ambientLighting;
 
-
-    
     // Hair transluceny    
-    if (isHair) {    
-	    vec3 viewDir = normalize(viewPos - WorldPos);
-        vec3 lightDir = normalize(lightPosition - WorldPos.xyz);
-        vec3 halfVector = normalize(lightDir + viewDir);
-        float diff = max(dot(normal, lightDir), 0.0);
-        float spec = pow(max(dot(normal, halfVector), 0.0), 32.0);
-        float backlight = max(dot(-normal, lightDir), 0.0);
-        vec3 lightColor = vec3(1, 0.98, 0.94);
-        float translucencyFactor = 0.01;
-        vec3 translucency = backlight * lightColor * translucencyFactor;
-        //finalColor.rgb += translucency * baseColor.rgb; // multiplying with baseColor is a hack but looks 100x better
-    }
+    //if (isHair) {    
+	//    vec3 viewDir = normalize(viewPos - WorldPos);
+    //    vec3 lightDir = normalize(lightPosition - WorldPos.xyz);
+    //    vec3 halfVector = normalize(lightDir + viewDir);
+    //    float diff = max(dot(normal, lightDir), 0.0);
+    //    float spec = pow(max(dot(normal, halfVector), 0.0), 32.0);
+    //    float backlight = max(dot(-normal, lightDir), 0.0);
+    //    vec3 lightColor = vec3(1, 0.98, 0.94);
+    //    float translucencyFactor = 0.01;
+    //    vec3 translucency = backlight * lightColor * translucencyFactor;
+    //    finalColor.rgb += translucency * baseColor.rgb; // multiplying with baseColor is a hack but looks 100x better
+    //}
 
     // Hair frensel
-    if (isHair) {    
-	    vec3 viewDir = normalize(viewPos - WorldPos);
-        float frenselFactor = 0.025;
-        float fresnel = pow(1.0 - dot(normal, viewDir), 2.0);        
-        //finalColor.rgb += vec3(fresnel * frenselFactor) * baseColor.rgb; // multiplying with baseColor is a hack but looks 100x better
-    }
+    //if (isHair) {    
+	//    vec3 viewDir = normalize(viewPos - WorldPos);
+    //    float frenselFactor = 0.025;
+    //    float fresnel = pow(1.0 - dot(normal, viewDir), 2.0);        
+    //    finalColor.rgb += vec3(fresnel * frenselFactor) * baseColor.rgb; // multiplying with baseColor is a hack but looks 100x better
+    //}
 
     // Tone mapping
 	finalColor = mix(finalColor, Tonemap_ACES(finalColor), 1.0);
 	finalColor = pow(finalColor, vec3(1.0/2.2));
 	finalColor = mix(finalColor, Tonemap_ACES(finalColor), 0.235);
 
-    if (isHair) {
-        finalAlpha = baseColor.a * 1.5;//1.1;
-        finalAlpha = clamp(finalAlpha, 0, 1);
-    }
-
-   // finalColor = baseColor.rgb;
-
     finalColor.rgb = finalColor.rgb * finalAlpha;
     FragOut = vec4(finalColor, finalAlpha);
-    //FragOut = vec4(baseColor.rgb, finalAlpha);
-
-    // FragOut = vec4(baseColor.rgb, 1.0);
-    
-    if (!isHair) {    
-       //FragOut = vec4((WorldPos.rgb * 0.1) + baseColor.rgb, finalAlpha);
-       //FragOut = vec4((WorldPos.rgb * 0.2) + baseColor.rgb, finalAlpha);
-    }
 }

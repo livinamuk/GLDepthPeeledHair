@@ -1,10 +1,10 @@
 #pragma once
+#include <string>
+#include "../API/OpenGL/Types/GL_detachedMesh.hpp"
 #include "../Common/Types.h"
 #include "../File/File.h"
-#include "../Model.hpp"
-#include "../Texture.h"
-#include "../API/OpenGL/Types/GL_detachedMesh.hpp"
-#include <string>
+#include "../Types/Model.hpp"
+#include "../Types/Texture.h"
 
 namespace AssetManager {
     void Init();

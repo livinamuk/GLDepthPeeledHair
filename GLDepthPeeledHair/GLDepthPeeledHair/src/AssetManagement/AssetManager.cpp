@@ -1,11 +1,11 @@
 ﻿#pragma once
 #include "AssetManager.h"
 #include <thread>
+#include "../AssetManagement/BakeQueue.h"
 #include "../API/OpenGL/GL_backend.h"
 #include "../API/OpenGL/GL_util.hpp"
 #include "../File/AssimpImporter.h"
 #include "../Tools/ImageTools.h"
-#include "../BakeQueue.h"
 #include "../Util.hpp"
 
 namespace AssetManager {

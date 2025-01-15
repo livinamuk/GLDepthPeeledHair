@@ -5,7 +5,7 @@
 #include <iostream>
 #include "Types/GL_pbo.hpp"
 #include "Types/GL_texture.h"
-#include "../../Texture.h"
+#include "../Types/Texture.h"
 
 enum class WindowedMode { WINDOWED, FULLSCREEN };
 

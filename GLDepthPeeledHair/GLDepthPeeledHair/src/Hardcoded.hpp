@@ -1,5 +1,5 @@
 #pragma once
-#include "Managers/AssetManager.h"
+#include "AssetManagement/AssetManager.h"
 
 namespace Hardcoded {
 

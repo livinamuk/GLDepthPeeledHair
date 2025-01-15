@@ -1,16 +1,16 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "Types.h"
-#include "Managers/AssetManager.h"
-#include "Audio.h"
-#include "Input.h"
-#include "Scene.hpp"
-#include "Camera.h"
-#include "File/File.h"
-#include "Tools/ImageTools.h"
+#include "AssetManagement/AssetManager.h"
 #include "API/OpenGL/GL_backend.h"
 #include "API/OpenGL/GL_renderer.h"
+#include "Core/Audio.h"
+#include "Core/Scene.hpp"
+#include "Core/Camera.h"
+#include "Input/Input.h"
+#include "File/File.h"
 #include "TextBlitting/Textblitter.h"
+#include "Tools/ImageTools.h"
+#include "Types.h"
 
 void Init(int width, int height, std::string title) {
     OpenGLBackend::Init(width, height, title);

@@ -5,16 +5,16 @@
 #include "Types/GL_frameBuffer.hpp"
 #include "Types/GL_pbo.hpp"
 #include "Types/GL_shader.h"
-#include "../Managers/AssetManager.h"
-#include "../Camera.h"
-#include "../Scene.hpp"
-#include "../Input.h"
+#include "../AssetManagement/AssetManager.h"
+#include "../Core/Audio.h"
+#include "../Core/Camera.h"
+#include "../Core/Scene.hpp"
+#include "../Input/Input.h"
 #include "../Util.hpp"
-#include <glm/gtx/matrix_decompose.hpp>
-#include "../Hardcoded.hpp"
-#include "../GameObject.h"
-#include "../Audio.h"
 #include "../TextBlitting/TextBlitter.h"
+#include "../Types/GameObject.h"
+#include "../Hardcoded.hpp"
+#include <glm/gtx/matrix_decompose.hpp>
 
 namespace OpenGLRenderer {
 
@@ -177,7 +177,7 @@ namespace OpenGLRenderer {
         GLFrameBuffer& mainFrameBuffer = g_frameBuffers.main;
         GLFrameBuffer& hairFrameBuffer = g_frameBuffers.hair;
 
-        static int peelCount = 3;
+        static int peelCount = 4;
         if (Input::KeyPressed(HELL_KEY_E) && peelCount < 7) {
             Audio::PlayAudio("UI_Select.wav", 1.0f);
             peelCount++;

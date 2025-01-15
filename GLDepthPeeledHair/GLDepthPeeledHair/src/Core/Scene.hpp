@@ -1,10 +1,10 @@
 #pragma once
 #include <vector>
+#include "../AssetManagement/AssetManager.h"
+#include "../Input/Input.h"
+#include "../Types/GameObject.h"
+#include "../Util.hpp"
 #include "Types.h"
-#include "Managers/AssetManager.h"
-#include "GameObject.h"
-#include "Input.h"
-#include "Util.hpp"
 
 namespace Scene {
 

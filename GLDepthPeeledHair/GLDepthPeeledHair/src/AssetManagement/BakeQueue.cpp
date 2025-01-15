@@ -1,6 +1,6 @@
 #include "BakeQueue.h"
-#include "API/OpenGL/GL_backend.h"
-#include "Managers/AssetManager.h"
+#include "AssetManager.h"
+#include "../API/OpenGL/GL_backend.h"
 
 namespace BakeQueue {
 
