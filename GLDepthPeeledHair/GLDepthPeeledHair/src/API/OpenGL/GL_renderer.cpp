@@ -23,8 +23,8 @@ namespace OpenGLRenderer {
         Shader lighting;
         Shader hairDepthPeel;
         Shader textBlitter;
-        ComputeShader hairfinalComposite;
-        ComputeShader hairLayerComposite;
+        Shader hairfinalComposite;
+        Shader hairLayerComposite;
     } g_shaders;
 
     struct FrameBuffers {
@@ -336,11 +336,13 @@ namespace OpenGLRenderer {
     }
 
     void LoadShaders() {
-        g_shaders.hairfinalComposite.Load("res/shaders/gl_hair_final_composite.comp");
-        g_shaders.hairLayerComposite.Load("res/shaders/gl_hair_layer_composite.comp");
-        g_shaders.solidColor.Load("gl_solid_color.vert", "gl_solid_color.frag");
-        g_shaders.hairDepthPeel.Load("gl_hair_depth_peel.vert", "gl_hair_depth_peel.frag");
-        g_shaders.lighting.Load("gl_lighting.vert", "gl_lighting.frag");
-        g_shaders.textBlitter.Load("gl_text_blitter.vert", "gl_text_blitter.frag");
+        if (g_shaders.hairfinalComposite.Load({ "gl_hair_final_composite.comp" }) &&
+            g_shaders.hairLayerComposite.Load({ "gl_hair_layer_composite.comp" }) &&
+            g_shaders.solidColor.Load({ "gl_solid_color.vert", "gl_solid_color.frag" }) &&
+            g_shaders.hairDepthPeel.Load({ "gl_hair_depth_peel.vert", "gl_hair_depth_peel.frag" }) &&
+            g_shaders.lighting.Load({ "gl_lighting.vert", "gl_lighting.frag" }) &&
+            g_shaders.textBlitter.Load({ "gl_text_blitter.vert", "gl_text_blitter.frag" })) {
+            std::cout << "Hotloaded shaders\n";
+        }
     }
 }

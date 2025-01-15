@@ -34,20 +34,22 @@
     <ClCompile Include="vendor\tinyexr\tinyexr.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\shaders\gl_hair_final_composite.comp" />
-    <None Include="res\shaders\gl_hair_depth_peel.frag" />
-    <None Include="res\shaders\gl_hair_depth_peel.vert" />
-    <None Include="res\shaders\gl_hair_layer_composite.comp" />
-    <None Include="res\shaders\gl_solid_color.frag" />
-    <None Include="res\shaders\gl_solid_color.vert" />
-    <None Include="res\shaders\gl_text_blitter.frag" />
-    <None Include="res\shaders\gl_text_blitter.vert" />
+    <None Include="res\shaders\common\constants.glsl" />
+    <None Include="res\shaders\OpenGL\gl_hair_final_composite.comp" />
+    <None Include="res\shaders\OpenGL\gl_hair_depth_peel.frag" />
+    <None Include="res\shaders\OpenGL\gl_hair_depth_peel.vert" />
+    <None Include="res\shaders\OpenGL\gl_hair_layer_composite.comp" />
+    <None Include="res\shaders\OpenGL\gl_solid_color.frag" />
+    <None Include="res\shaders\OpenGL\gl_solid_color.vert" />
+    <None Include="res\shaders\OpenGL\gl_text_blitter.frag" />
+    <None Include="res\shaders\OpenGL\gl_text_blitter.vert" />
+    <None Include="res\shaders\common\pbr_functions.glsl" />
     <None Include="res\shaders\terrain.frag" />
     <None Include="res\shaders\terrain.vert" />
     <None Include="res\shaders\skybox.frag" />
     <None Include="res\shaders\skybox.vert" />
-    <None Include="res\shaders\gl_lighting.frag" />
-    <None Include="res\shaders\gl_lighting.vert" />
+    <None Include="res\shaders\OpenGL\gl_lighting.frag" />
+    <None Include="res\shaders\OpenGL\gl_lighting.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\API\OpenGL\GL_backend.h" />
