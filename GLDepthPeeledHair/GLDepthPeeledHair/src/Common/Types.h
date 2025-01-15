@@ -6,6 +6,14 @@
 #include <iostream>
 #include "Enums.h"
 
+struct RenderItem {
+    glm::mat4 modelMatrix;
+    int meshIndex;
+    int baseColorTextureIndex;
+    int normalTextureIndex;
+    int rmaTextureIndex;
+};
+
 struct FontVertex {
     glm::vec2 position;
     glm::vec2 uv;

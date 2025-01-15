@@ -9,14 +9,37 @@
 namespace Scene {
 
     inline std::vector<GameObject> g_gameObjects;
+    inline std::vector<RenderItem> g_renderItems;
+    inline std::vector<RenderItem> g_renderItemsBlended;
+    inline std::vector<RenderItem> g_renderItemsAlphaDiscarded;
+    inline std::vector<RenderItem> g_renderItemsHairTopLayer;
+    inline std::vector<RenderItem> g_renderItemsHairBottomLayer;
 
     inline void Init() {
         // nothing as of yet
     }
 
     inline void Update(float deltaTime) {
-        // nothing as of yet
+        // Clear global render item vectors
+        g_renderItems.clear();
+        g_renderItemsBlended.clear();
+        g_renderItemsAlphaDiscarded.clear();
+        g_renderItemsHairTopLayer.clear();
+        g_renderItemsHairBottomLayer.clear();
+
+        // Update each GameObject and collect render items
+        for (GameObject& gameObject : g_gameObjects) {
+            gameObject.UpdateRenderItems();
+
+            // Merge render items into global vectors
+            g_renderItems.insert(g_renderItems.end(), gameObject.GetRenderItems().begin(), gameObject.GetRenderItems().end());
+            g_renderItemsBlended.insert(g_renderItemsBlended.end(), gameObject.GetRenderItemsBlended().begin(), gameObject.GetRenderItemsBlended().end());
+            g_renderItemsAlphaDiscarded.insert(g_renderItemsAlphaDiscarded.end(), gameObject.GetRenderItemsAlphaDiscarded().begin(), gameObject.GetRenderItemsAlphaDiscarded().end());
+            g_renderItemsHairTopLayer.insert(g_renderItemsHairTopLayer.end(), gameObject.GetRenderItemsHairTopLayer().begin(), gameObject.GetRenderItemsHairTopLayer().end());
+            g_renderItemsHairBottomLayer.insert(g_renderItemsHairBottomLayer.end(), gameObject.GetRenderItemsHairBottomLayer().begin(), gameObject.GetRenderItemsHairBottomLayer().end());
+        }
     }
+
 
     inline void CreateGameObject() {
         g_gameObjects.emplace_back();
@@ -104,4 +127,10 @@ namespace Scene {
         mermaid->SetMeshBlendingMode("HairInner", BlendingMode::HAIR_UNDER_LAYER);
         mermaid->SetName("Mermaid");
     }
+
+    inline std::vector<RenderItem>& GetRenderItems() { return g_renderItems; }
+    inline std::vector<RenderItem>& GetRenderItemsBlended() { return g_renderItemsBlended; }
+    inline std::vector<RenderItem>& GetRenderItemsAlphaDiscarded() { return g_renderItemsAlphaDiscarded; }
+    inline std::vector<RenderItem>& GetRenderItemsHairTopLayer() { return g_renderItemsHairTopLayer; }
+    inline std::vector<RenderItem>& GetRenderItemsHairBottomLayer() { return g_renderItemsHairBottomLayer; }
 }

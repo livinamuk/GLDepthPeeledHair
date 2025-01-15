@@ -32,17 +32,10 @@ namespace OpenGLRenderer {
         GLFrameBuffer hair;
     } g_frameBuffers;
 
-    struct RenderItem {
-        OpenGLDetachedMesh* mesh;
-        Material* material;
-        glm::mat4 modelMatrix;
-    };
-
-    void DrawScene(Shader& shader, bool renderHair);
+    void DrawScene(Shader& shader);
     void RenderLighting();
     void RenderDebug();
     void RenderHair();
-    void GenerateMipmaps(OpenGLTexture& glTexture); 
     void RenderHairLayer(std::vector<RenderItem>& renderItems, int peelCount);
     void RenderText();
 
@@ -115,34 +108,20 @@ namespace OpenGLRenderer {
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     }
 
-    void DrawScene(Shader& shader, bool renderHair) {
+    void DrawScene(Shader& shader) {
         // Non blended
-        for (GameObject& gameObject : Scene::g_gameObjects) {
-            if (gameObject.m_model) {
-                shader.SetMat4("model", gameObject.m_transform.to_mat4());
-                for (int i = 0; i < gameObject.m_model->GetMeshCount(); i++) {
-                    BlendingMode& blendingMode = gameObject.m_meshBlendingModes[i];
-                    if (blendingMode == BlendingMode::NONE) {
-                        Material* material = AssetManager::GetMaterialByIndex(gameObject.m_meshMaterialIndices[i]);
-                        if (material && material->m_basecolor != -1) {
-                            glActiveTexture(GL_TEXTURE0);
-                            glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_basecolor)->GetGLTexture().GetHandle());
-                        }
-                        if (material && material->m_normal != -1) {
-                            glActiveTexture(GL_TEXTURE1);
-                            glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_normal)->GetGLTexture().GetHandle());
-                        }
-                        if (material && material->m_rma != -1) {
-                            glActiveTexture(GL_TEXTURE2);
-                            glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_rma)->GetGLTexture().GetHandle());
-                        }
-                        OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(gameObject.m_model->GetMeshIndices()[i]);
-                        if (mesh) {
-                            glBindVertexArray(mesh->GetVAO());
-                            glDrawElements(GL_TRIANGLES, mesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
-                        }
-                    }
-                }
+        for (RenderItem& renderItem : Scene::GetRenderItems()) {
+            OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(renderItem.meshIndex);
+            if (mesh) {
+                shader.SetMat4("model", renderItem.modelMatrix);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.baseColorTextureIndex)->GetGLTexture().GetHandle());
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.normalTextureIndex)->GetGLTexture().GetHandle());
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.rmaTextureIndex)->GetGLTexture().GetHandle());
+                glBindVertexArray(mesh->GetVAO());
+                glDrawElements(GL_TRIANGLES, mesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
             }
         }
         // Blended
@@ -150,32 +129,18 @@ namespace OpenGLRenderer {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glDisable(GL_CULL_FACE);
         glDepthMask(GL_FALSE);
-        for (GameObject& gameObject : Scene::g_gameObjects) {
-            if (gameObject.m_model) {
-                shader.SetMat4("model", gameObject.m_transform.to_mat4());
-                for (int i = 0; i < gameObject.m_model->GetMeshCount(); i++) {
-                    BlendingMode& blendingMode = gameObject.m_meshBlendingModes[i];
-                    if (blendingMode == BlendingMode::BLENDED) {
-                        Material* material = AssetManager::GetMaterialByIndex(gameObject.m_meshMaterialIndices[i]);
-                        if (material && material->m_basecolor != -1) {
-                            glActiveTexture(GL_TEXTURE0);
-                            glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_basecolor)->GetGLTexture().GetHandle());
-                        }
-                        if (material && material->m_normal != -1) {
-                            glActiveTexture(GL_TEXTURE1);
-                            glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_normal)->GetGLTexture().GetHandle());
-                        }
-                        if (material && material->m_rma != -1) {
-                            glActiveTexture(GL_TEXTURE2);
-                            glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_rma)->GetGLTexture().GetHandle());
-                        }
-                        OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(gameObject.m_model->GetMeshIndices()[i]);
-                        if (mesh) {
-                            glBindVertexArray(mesh->GetVAO());
-                            glDrawElements(GL_TRIANGLES, mesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
-                        }
-                    }
-                }
+        for (RenderItem& renderItem : Scene::GetRenderItemsBlended()) {
+            OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(renderItem.meshIndex);
+            if (mesh) {
+                shader.SetMat4("model", renderItem.modelMatrix);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.baseColorTextureIndex)->GetGLTexture().GetHandle());
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.normalTextureIndex)->GetGLTexture().GetHandle());
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.rmaTextureIndex)->GetGLTexture().GetHandle());
+                glBindVertexArray(mesh->GetVAO());
+                glDrawElements(GL_TRIANGLES, mesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
             }
         }
         glDepthMask(GL_TRUE);
@@ -203,7 +168,7 @@ namespace OpenGLRenderer {
         g_shaders.lighting.SetFloat("time", time);
         g_shaders.lighting.SetFloat("viewportWidth", g_frameBuffers.hair.GetWidth());
         g_shaders.lighting.SetFloat("viewportHeight", g_frameBuffers.hair.GetHeight());
-        DrawScene(g_shaders.lighting, false);
+        DrawScene(g_shaders.lighting);
     }
 
 
@@ -242,43 +207,9 @@ namespace OpenGLRenderer {
         glEnable(GL_CULL_FACE);
         glDisable(GL_BLEND);
 
-        // Top layer
-        std::vector<RenderItem> renderItems;
-        for (GameObject& gameObject : Scene::g_gameObjects) {
-            if (gameObject.m_model) {
-                g_shaders.hairDepthPeel.SetMat4("model", gameObject.m_transform.to_mat4());
-                for (int i = 0; i < gameObject.m_model->GetMeshCount(); i++) {
-                    OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(gameObject.m_model->GetMeshIndices()[i]);
-                    BlendingMode& blendingMode = gameObject.m_meshBlendingModes[i];
-                    if (blendingMode == BlendingMode::HAIR_TOP_LAYER) {
-                        RenderItem& renderItem = renderItems.emplace_back();
-                        renderItem.modelMatrix = gameObject.m_transform.to_mat4();
-                        renderItem.material = AssetManager::GetMaterialByIndex(gameObject.m_meshMaterialIndices[i]);
-                        renderItem.mesh = mesh;
-                    }
-                }
-            }
-        }
-        RenderHairLayer(renderItems, peelCount);
-
-        // Bottom layer
-        renderItems.clear();
-        for (GameObject& gameObject : Scene::g_gameObjects) {
-            if (gameObject.m_model) {
-                g_shaders.hairDepthPeel.SetMat4("model", gameObject.m_transform.to_mat4());
-                for (int i = 0; i < gameObject.m_model->GetMeshCount(); i++) {
-                    OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(gameObject.m_model->GetMeshIndices()[i]);
-                    BlendingMode& blendingMode = gameObject.m_meshBlendingModes[i];
-                    if (blendingMode == BlendingMode::HAIR_UNDER_LAYER) {
-                        RenderItem& renderItem = renderItems.emplace_back();
-                        renderItem.modelMatrix = gameObject.m_transform.to_mat4();
-                        renderItem.material = AssetManager::GetMaterialByIndex(gameObject.m_meshMaterialIndices[i]);
-                        renderItem.mesh = mesh;
-                    }
-                }
-            }
-        }
-        RenderHairLayer(renderItems, peelCount);
+        // Render all top then all Bottom layers
+        RenderHairLayer(Scene::GetRenderItemsHairTopLayer(), peelCount);
+        RenderHairLayer(Scene::GetRenderItemsHairBottomLayer(), peelCount);
 
         g_shaders.hairfinalComposite.Use();
         glActiveTexture(GL_TEXTURE0);
@@ -296,7 +227,7 @@ namespace OpenGLRenderer {
     }
 
     void RenderHairLayer(std::vector<RenderItem>& renderItems, int peelCount) {
-        g_frameBuffers.hair.Bind();
+         g_frameBuffers.hair.Bind();
         g_frameBuffers.hair.ClearAttachment("ViewspaceDepthPrevious", 1, 1, 1, 1);
         for (int i = 0; i < peelCount; i++) {
             // Viewspace depth pass
@@ -316,9 +247,12 @@ namespace OpenGLRenderer {
             shader->SetFloat("viewportWidth", g_frameBuffers.hair.GetWidth());
             shader->SetFloat("viewportHeight", g_frameBuffers.hair.GetHeight());
             for (RenderItem& renderItem : renderItems) {
-                shader->SetMat4("model", renderItem.modelMatrix);
-                glBindVertexArray(renderItem.mesh->GetVAO());
-                glDrawElements(GL_TRIANGLES, renderItem.mesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
+                OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(renderItem.meshIndex);
+                if (mesh) {
+                    shader->SetMat4("model", renderItem.modelMatrix);
+                    glBindVertexArray(mesh->GetVAO());
+                    glDrawElements(GL_TRIANGLES, mesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
+                }
             }
             // Color pass
             glDepthFunc(GL_EQUAL);
@@ -330,24 +264,17 @@ namespace OpenGLRenderer {
             shader->SetMat4("projection", Camera::GetProjectionMatrix());
             shader->SetMat4("view", Camera::GetViewMatrix());
             for (RenderItem& renderItem : renderItems) {
-                shader->SetMat4("model", renderItem.modelMatrix);
-                Material* material = renderItem.material;
-                if (material && material->m_basecolor != -1) {
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_basecolor)->GetGLTexture().GetHandle());
-                }
-                if (material && material->m_normal != -1) {
-                    glActiveTexture(GL_TEXTURE1);
-                    glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_normal)->GetGLTexture().GetHandle());
-                }
-                if (material && material->m_rma != -1) {
-                    glActiveTexture(GL_TEXTURE2);
-                    glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(material->m_rma)->GetGLTexture().GetHandle());
-                }
-                OpenGLDetachedMesh* mesh = renderItem.mesh;
+                OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(renderItem.meshIndex);
                 if (mesh) {
-                    glBindVertexArray(renderItem.mesh->GetVAO());
-                    glDrawElements(GL_TRIANGLES, renderItem.mesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
+                    shader->SetMat4("model", renderItem.modelMatrix);
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.baseColorTextureIndex)->GetGLTexture().GetHandle());
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.normalTextureIndex)->GetGLTexture().GetHandle());
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, AssetManager::GetTextureByIndex(renderItem.rmaTextureIndex)->GetGLTexture().GetHandle());
+                    glBindVertexArray(mesh->GetVAO());
+                    glDrawElements(GL_TRIANGLES, mesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
                 }
             }
             // TODO!: when you port this you can output previous viewspace depth in the pass above
@@ -366,10 +293,12 @@ namespace OpenGLRenderer {
         glDisable(GL_CULL_FACE);
         glPointSize(8.0f);
         glDisable(GL_DEPTH_TEST);
+        
         g_shaders.solidColor.Use();
         g_shaders.solidColor.SetMat4("projection", Camera::GetProjectionMatrix());
         g_shaders.solidColor.SetMat4("view", Camera::GetViewMatrix());
         g_shaders.solidColor.SetMat4("model", glm::mat4(1));
+
         // Draw lines
         UpdateDebugLinesMesh();
         if (g_debugLinesMesh.GetIndexCount() > 0) {
@@ -401,6 +330,7 @@ namespace OpenGLRenderer {
             glBindVertexArray(fontMesh->GetVAO());
             glDrawElements(GL_TRIANGLES, fontMesh->GetIndexCount(), GL_UNSIGNED_INT, 0);
         }
+
         // Cleanup
         glDisable(GL_BLEND);
     }

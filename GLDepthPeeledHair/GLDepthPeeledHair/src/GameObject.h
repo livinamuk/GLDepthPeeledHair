@@ -1,4 +1,5 @@
 #pragma once
+#include "Types.h"
 #include "Model.hpp"
 
 struct GameObject {
@@ -16,4 +17,18 @@ struct GameObject {
     void SetMeshBlendingMode(const char* meshName, BlendingMode blendingMode);
     void SetMeshBlendingModes(BlendingMode blendingMode);
     void PrintMeshNames();
+    void UpdateRenderItems();
+
+    std::vector<RenderItem>& GetRenderItems();
+    std::vector<RenderItem>& GetRenderItemsBlended();
+    std::vector<RenderItem>& GetRenderItemsAlphaDiscarded();
+    std::vector<RenderItem>& GetRenderItemsHairTopLayer();
+    std::vector<RenderItem>& GetRenderItemsHairBottomLayer();
+
+private:
+    std::vector<RenderItem> m_renderItems;
+    std::vector<RenderItem> m_renderItemsBlended;
+    std::vector<RenderItem> m_renderItemsAlphaDiscarded;
+    std::vector<RenderItem> m_renderItemsHairTopLayer;
+    std::vector<RenderItem> m_renderItemsHairBottomLayer;
 };

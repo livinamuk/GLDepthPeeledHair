@@ -92,3 +92,56 @@ void GameObject::PrintMeshNames() {
         }
     }
 }
+
+void GameObject::UpdateRenderItems() {
+    m_renderItems.clear();
+    m_renderItemsBlended.clear();
+    m_renderItemsAlphaDiscarded.clear();
+    m_renderItemsHairTopLayer.clear();
+    m_renderItemsHairBottomLayer.clear();
+    if (m_model) {
+        for (int i = 0; i < m_model->GetMeshCount(); i++) {
+            OpenGLDetachedMesh* mesh = AssetManager::GetMeshByIndex(m_model->GetMeshIndices()[i]);
+            if (mesh) {
+                RenderItem renderItem;
+                renderItem.modelMatrix = m_transform.to_mat4();
+                renderItem.meshIndex = m_model->GetMeshIndices()[i];
+                Material* material = AssetManager::GetMaterialByIndex(m_meshMaterialIndices[i]);
+                if (material) {
+                    renderItem.baseColorTextureIndex = material->m_basecolor;
+                    renderItem.normalTextureIndex = material->m_normal;
+                    renderItem.rmaTextureIndex = material->m_rma;
+                }
+                BlendingMode blendingMode = m_meshBlendingModes[i];
+                switch (blendingMode) {
+                case BlendingMode::NONE: m_renderItems.push_back(renderItem); break;
+                case BlendingMode::BLENDED: m_renderItemsBlended.push_back(renderItem); break;
+                case BlendingMode::ALPHA_DISCARDED: m_renderItemsAlphaDiscarded.push_back(renderItem); break;
+                case BlendingMode::HAIR_TOP_LAYER: m_renderItemsHairTopLayer.push_back(renderItem); break;
+                case BlendingMode::HAIR_UNDER_LAYER: m_renderItemsHairBottomLayer.push_back(renderItem); break;
+                default: break;
+                }
+            }
+        }
+    }
+}
+
+std::vector<RenderItem>& GameObject::GetRenderItems() {
+    return m_renderItems;
+}
+
+std::vector<RenderItem>& GameObject::GetRenderItemsBlended() {
+    return m_renderItemsBlended;
+}
+
+std::vector<RenderItem>& GameObject::GetRenderItemsAlphaDiscarded() {
+    return m_renderItemsAlphaDiscarded;
+}
+
+std::vector<RenderItem>& GameObject::GetRenderItemsHairTopLayer() {
+    return m_renderItemsHairTopLayer;
+}
+
+std::vector<RenderItem>& GameObject::GetRenderItemsHairBottomLayer() {
+    return m_renderItemsHairBottomLayer;
+}
